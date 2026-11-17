@@ -11,7 +11,13 @@ export async function GET(req: Request) {
   try {
     return Response.json(await runCalendarSync());
   } catch (e) {
-    console.error('Kalendersynk misslyckades', e);
+    const cause = e instanceof Error ? (e.cause as { name?: string; code?: string } | undefined) : undefined;
+    // Logga aldrig hela felkedjan: den kan innehålla flödets URL.
+    console.error('Kalendersynk misslyckades', {
+      message: e instanceof Error ? e.message : 'okänt fel',
+      causeName: cause?.name,
+      causeCode: cause?.code,
+    });
     const message = e instanceof CalendarSyncError ? e.message : 'Kalendersynk misslyckades.';
     return Response.json({ error: message }, { status: 502 });
   }

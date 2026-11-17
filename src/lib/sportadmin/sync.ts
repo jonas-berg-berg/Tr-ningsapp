@@ -45,6 +45,10 @@ export async function runCalendarSync(
     throw new CalendarSyncError('Kunde inte hämta kalendern från Sportadmin.', { cause: e });
   }
 
+  if (!body.includes('BEGIN:VCALENDAR')) {
+    throw new CalendarSyncError('Svaret från Sportadmin var inte en kalender.');
+  }
+
   let incoming;
   try {
     incoming = parseFeed(body);
@@ -63,6 +67,11 @@ export async function runCalendarSync(
     startsAt: new Date(r.starts_at),
     cancelled: r.cancelled,
   }));
+
+  // Ett tomt flöde när vi har framtida händelser är nästan säkert ett fel hos Sportadmin.
+  if (incoming.length === 0 && existing.some((e) => !e.cancelled)) {
+    throw new CalendarSyncError('Kalendern från Sportadmin var tom, ingen ändring gjordes.');
+  }
 
   const { upserts, cancelUids } = diffEvents(incoming, existing, now);
 

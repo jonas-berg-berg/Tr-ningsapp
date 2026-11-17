@@ -88,4 +88,24 @@ describe('runCalendarSync', () => {
     expect(calls.inUids[0]).toEqual(['gone']);
     expect(calls.update[0]).toMatchObject({ cancelled: true });
   });
+  it('kastar och skriver inget när svaret inte är en kalender (HTML)', async () => {
+    const { client, calls } = fakeSupabase({
+      existing: [{ uid: 'f', starts_at: '2026-11-30T10:00:00Z', cancelled: false }],
+    });
+    const fetchFn = ok('<html><body>Logga in</body></html>');
+    await expect(runCalendarSync({ supabase: client, fetchFn, now })).rejects.toBeInstanceOf(CalendarSyncError);
+    expect(calls.upsert).toHaveLength(0);
+    expect(calls.update).toHaveLength(0);
+  });
+  it('kastar och avbokar inget när flödet är tomt men framtida händelser finns', async () => {
+    const { client, calls } = fakeSupabase({
+      existing: [{ uid: 'f', starts_at: '2026-11-30T10:00:00Z', cancelled: false }],
+    });
+    const empty = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nEND:VCALENDAR\r\n';
+    await expect(runCalendarSync({ supabase: client, fetchFn: ok(empty), now })).rejects.toBeInstanceOf(
+      CalendarSyncError,
+    );
+    expect(calls.upsert).toHaveLength(0);
+    expect(calls.update).toHaveLength(0);
+  });
 });
