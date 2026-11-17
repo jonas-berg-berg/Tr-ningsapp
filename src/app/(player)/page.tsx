@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { EnableNotifications } from '@/components/EnableNotifications';
 import { GoalMeter } from '@/components/GoalMeter';
+import { InstallGuide } from '@/components/InstallGuide';
+import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { StreakBadge } from '@/components/StreakBadge';
 import { TodayCard } from '@/components/TodayCard';
 import { WeeklyCard } from '@/components/WeeklyCard';
@@ -112,6 +115,10 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
           ))}
         </section>
       )}
+
+      <RegisterServiceWorker />
+      <InstallGuide />
+      <EnableNotifications />
 
       <nav className="flex flex-col gap-2" aria-label="Mer">
         <Link href="/statistik" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">

@@ -3,6 +3,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Träningsappen",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Träning", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/icon-192.png" },
   description: "Logga dina träningspass, håll din streak vid liv och hjälp laget nå lagmålet.",
 };
 
