@@ -19,6 +19,8 @@ create table public.invites (
   display_name text not null,
   role text not null default 'player' check (role in ('player', 'coach')),
   created_by uuid default auth.uid(),
+  -- Inbjudningar gäller i 7 dagar (kontrolleras vid inlösen i appen).
+  created_at timestamptz not null default now(),
   used_at timestamptz
 );
 
@@ -136,30 +138,50 @@ as $$
   )
 $$;
 
+-- Med i laget = har en profil (spelare eller tränare). Supabase Auth tillåter som standard
+-- egen registrering med den publika anon-nyckeln; ett sådant konto har ingen profil och
+-- ska inte se något. security definer av samma skäl som is_coach().
+create function public.is_member() returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.profiles p where p.id = auth.uid())
+$$;
+
 -- Lagets summa mot ett lagmål. security definer: spelare ser summan utan att kunna läsa andras loggar.
+-- Bara spelares loggar räknas (R12), och bara medlemmar får ett svar (annars null).
 create function public.team_goal_total(goal_id uuid) returns numeric
 language sql
 stable
 security definer
 set search_path = public
 as $$
+  with player_logs as (
+    select l.* from public.logs l
+    join public.profiles p on p.id = l.player_id and p.role = 'player'
+  )
   select case g.metric
     when 'sessions' then (
-      select count(*)::numeric from public.logs l
+      select count(*)::numeric from player_logs l
       where l.date between g.starts_on and g.ends_on)
     when 'extra' then (
-      select count(*)::numeric from public.logs l
+      select count(*)::numeric from player_logs l
       where l.type = 'extra' and l.date between g.starts_on and g.ends_on)
     when 'km' then (
-      select coalesce(sum(l.km), 0) from public.logs l
+      select coalesce(sum(l.km), 0) from player_logs l
       where l.date between g.starts_on and g.ends_on)
   end
   from public.team_goals g
   where g.id = team_goal_total.goal_id
+    and public.is_member()
 $$;
 
 revoke all on function public.is_coach() from public, anon;
 grant execute on function public.is_coach() to authenticated, service_role;
+revoke all on function public.is_member() from public, anon;
+grant execute on function public.is_member() to authenticated, service_role;
 revoke all on function public.team_goal_total(uuid) from public, anon, service_role;
 grant execute on function public.team_goal_total(uuid) to authenticated;
 
@@ -186,19 +208,21 @@ create policy profiles_coach_all on public.profiles
 create policy invites_coach_all on public.invites
   for all to authenticated using (public.is_coach()) with check (public.is_coach());
 
--- calendar_events, missions, team_goals: alla inloggade läser, tränaren skriver.
+-- calendar_events, missions, team_goals: lagets medlemmar läser, tränaren skriver.
+-- Inte `using (true)`: ett självregistrerat konto utan profil ska inte se minderårigas
+-- träningstider och platser.
 create policy calendar_events_select on public.calendar_events
-  for select to authenticated using (true);
+  for select to authenticated using (public.is_member());
 create policy calendar_events_coach_all on public.calendar_events
   for all to authenticated using (public.is_coach()) with check (public.is_coach());
 
 create policy missions_select on public.missions
-  for select to authenticated using (true);
+  for select to authenticated using (public.is_member());
 create policy missions_coach_all on public.missions
   for all to authenticated using (public.is_coach()) with check (public.is_coach());
 
 create policy team_goals_select on public.team_goals
-  for select to authenticated using (true);
+  for select to authenticated using (public.is_member());
 create policy team_goals_coach_all on public.team_goals
   for all to authenticated using (public.is_coach()) with check (public.is_coach());
 

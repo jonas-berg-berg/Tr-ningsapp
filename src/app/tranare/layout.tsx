@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LogoutButton } from '@/components/LogoutButton';
 
 const LINKS = [
   { href: '/tranare', label: 'Översikt' },
@@ -16,9 +17,12 @@ export default function CoachLayout({ children }: LayoutProps<'/tranare'>) {
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Tränarvy</p>
-          <Link href="/" className="text-sm text-zinc-400 underline">
-            Till spelarvyn
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm text-zinc-400 underline">
+              Till spelarvyn
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
         <nav className="-mx-1 flex gap-1 overflow-x-auto pb-1" aria-label="Tränarmeny">
           {LINKS.map((l) => (

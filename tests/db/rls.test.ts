@@ -16,6 +16,8 @@ const MIGRATION = join(ROOT, 'supabase', 'migrations', '0001_init.sql');
 const A = '00000000-0000-0000-0000-00000000000a';
 const B = '00000000-0000-0000-0000-00000000000b';
 const COACH = '00000000-0000-0000-0000-0000000000cc';
+// Har ett auth-konto (t.ex. egen registrering) men ingen profil: inte med i laget.
+const STRANGER = '00000000-0000-0000-0000-0000000000ff';
 const GOAL_SESSIONS = '10000000-0000-0000-0000-000000000001';
 const GOAL_EXTRA = '10000000-0000-0000-0000-000000000002';
 const GOAL_KM = '10000000-0000-0000-0000-000000000003';
@@ -87,8 +89,8 @@ beforeAll(async () => {
 
   // Seed som superuser (förbi RLS).
   await db.query(
-    `insert into auth.users (id, email) values ($1, 'a@x'), ($2, 'b@x'), ($3, 'c@x')`,
-    [A, B, COACH],
+    `insert into auth.users (id, email) values ($1, 'a@x'), ($2, 'b@x'), ($3, 'c@x'), ($4, 'f@x')`,
+    [A, B, COACH, STRANGER],
   );
   await db.query(
     `insert into profiles (id, display_name, username, role) values
@@ -333,9 +335,14 @@ describe('settings och invites', () => {
     const code = await as(A, (c) => sqlState(c.query(`insert into invites (display_name) values ('Ny')`)));
     expect(code).toBe('42501');
     await as(COACH, async (c) => {
-      const r = await c.query(`insert into invites (display_name) values ('Ny') returning token, role, created_by`);
+      const r = await c.query(
+        `insert into invites (display_name) values ('Ny') returning token, role, created_by, created_at`,
+      );
       expect(r.rows[0].role).toBe('player');
       expect(r.rows[0].created_by).toBe(COACH);
+      expect(r.rows[0].created_at).toBeInstanceOf(Date);
+      // Tränaren kan ta bort en öppen inbjudan.
+      expect((await c.query('delete from invites where token = $1', [r.rows[0].token])).rowCount).toBe(1);
     });
     await as(A, async (c) => {
       expect(await count(c, 'select count(*) n from invites')).toBe(0);
@@ -487,6 +494,69 @@ describe('team_goal_total', () => {
   it('anon kan inte anropa den', async () => {
     const code = await as(null, (c) => sqlState(c.query('select team_goal_total($1)', [GOAL_KM])));
     expect(code).toBe('42501');
+  });
+
+  it('räknar bara spelares loggar, inte tränarens egna (R12)', async () => {
+    await as(A, async (c) => {
+      await c.query('reset role');
+      await c.query(
+        `insert into logs (player_id, date, type, mission_id, km) values
+           ($1, ${TODAY}, 'extra', $2, null), ($1, ${TODAY}, 'weekly', $3, 50)`,
+        [COACH, M_DAILY, M_WEEKLY],
+      );
+      await switchTo(c, A);
+      const total = async (id: string) =>
+        Number((await c.query('select team_goal_total($1) t', [id])).rows[0].t);
+      expect(await total(GOAL_SESSIONS)).toBe(6);
+      expect(await total(GOAL_EXTRA)).toBe(2);
+      expect(await total(GOAL_KM)).toBe(8);
+    });
+  });
+});
+
+describe('inloggad utan profil (främling som registrerat sig själv)', () => {
+  it('is_member() är falskt för främlingen och sant för spelare och tränare', async () => {
+    await as(STRANGER, async (c) => {
+      expect((await c.query('select public.is_member() m')).rows[0].m).toBe(false);
+    });
+    await as(A, async (c) => {
+      expect((await c.query('select public.is_member() m')).rows[0].m).toBe(true);
+    });
+    await as(COACH, async (c) => {
+      expect((await c.query('select public.is_member() m')).rows[0].m).toBe(true);
+    });
+  });
+
+  it('ser ingenting: kalender, vy, uppdrag, lagmål, profiler, loggar, inbjudningar, settings', async () => {
+    await as(STRANGER, async (c) => {
+      for (const table of [
+        'calendar_events', 'calendar_events_effective', 'missions', 'team_goals',
+        'profiles', 'logs', 'invites', 'settings', 'push_subscriptions',
+      ]) {
+        expect(await count(c, `select count(*) n from ${table}`), table).toBe(0);
+      }
+    });
+  });
+
+  it('team_goal_total ger ingenting', async () => {
+    await as(STRANGER, async (c) => {
+      for (const id of [GOAL_SESSIONS, GOAL_EXTRA, GOAL_KM]) {
+        expect((await c.query('select team_goal_total($1) t', [id])).rows[0].t).toBeNull();
+      }
+    });
+  });
+
+  it('kan inte logga eller prenumerera på push', async () => {
+    const codes = [
+      await as(STRANGER, (c) =>
+        sqlState(c.query(`insert into logs (player_id, date, type, other_kind) values ($1, ${TODAY}, 'other_org', 'ovrigt')`, [STRANGER])),
+      ),
+      await as(STRANGER, (c) =>
+        sqlState(c.query(`insert into push_subscriptions (player_id, endpoint, p256dh, auth) values ($1, 'https://p/s', 'k', 's')`, [STRANGER])),
+      ),
+    ];
+    // FK mot profiles (23503) eller RLS (42501): båda stoppar.
+    for (const code of codes) expect(['23503', '42501']).toContain(code);
   });
 });
 

@@ -31,6 +31,8 @@ async function StatsContent({ searchParams }: Pick<PageProps<'/statistik'>, 'sea
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+  const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+  if (!profile) redirect('/');
 
   const today = toStockholmDate(new Date());
   const month = parseMonth(manad, today);

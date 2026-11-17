@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { EnableNotifications } from '@/components/EnableNotifications';
 import { GoalMeter } from '@/components/GoalMeter';
 import { InstallGuide } from '@/components/InstallGuide';
+import { LogoutButton } from '@/components/LogoutButton';
+import { NotMember } from '@/components/NotMember';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { StreakBadge } from '@/components/StreakBadge';
 import { TodayCard } from '@/components/TodayCard';
@@ -54,7 +56,14 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase.from('profiles').select('display_name, role').eq('id', user.id).maybeSingle();
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('display_name, role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) throw new Error(`Kunde inte läsa profilen: ${profileError.message}`);
+  // Inloggad men inte med i laget (t.ex. ett självregistrerat konto): RLS visar ändå inget.
+  if (!profile) return <NotMember />;
 
   const now = toStockholmDate(new Date());
   const viewDate = yesterdayMode ? addDays(now, -1) : now;
@@ -70,7 +79,7 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-black tracking-tight">Hej {profile?.display_name ?? 'där'}!</h1>
+        <h1 className="text-2xl font-black tracking-tight">Hej {profile.display_name}!</h1>
         <div className="flex gap-2">
           <StreakBadge
             icon="🔥"
@@ -124,12 +133,16 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
         <Link href="/statistik" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">
           Min statistik <span aria-hidden>›</span>
         </Link>
-        {profile?.role === 'coach' && (
+        {profile.role === 'coach' && (
           <Link href="/tranare" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">
             Tränarvy <span aria-hidden>›</span>
           </Link>
         )}
       </nav>
+
+      <div className="flex justify-center">
+        <LogoutButton />
+      </div>
     </main>
   );
 }
