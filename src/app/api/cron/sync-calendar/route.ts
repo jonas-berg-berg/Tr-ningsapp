@@ -1,10 +1,10 @@
+import { connection } from 'next/server';
 import { isAuthorizedCron } from '../../../../lib/cron-auth';
 import { CalendarSyncError, runCalendarSync } from '../../../../lib/sportadmin/sync';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
+// Med cacheComponents körs GET vid anropstillfället; connection() gör det explicit.
 export async function GET(req: Request) {
+  await connection();
   if (!isAuthorizedCron(req, process.env.CRON_SECRET ?? '')) {
     return Response.json({ error: 'Obehörig' }, { status: 401 });
   }
