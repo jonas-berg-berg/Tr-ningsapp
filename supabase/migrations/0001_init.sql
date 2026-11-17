@@ -55,10 +55,18 @@ create table public.logs (
   event_uid text,
   event_title text,
   other_kind text check (other_kind in ('annat_lag', 'fotboll', 'ovrigt')),
-  mission_id uuid,
+  -- Uppdrag tas aldrig bort (de avslutas via active_to), så restrict skyddar historiken.
+  mission_id uuid references public.missions (id) on delete restrict,
   km numeric check (km is null or km > 0),
   created_by uuid default auth.uid(),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Träning/match måste peka på en händelse (annars kringgås unika indexet).
+  constraint logs_event_required check (type not in ('training', 'match') or event_uid is not null),
+  -- Veckouppdrag måste peka på ett uppdrag (NULL är distinkt i unika indexet).
+  constraint logs_weekly_mission_required check (type <> 'weekly' or mission_id is not null),
+  constraint logs_other_kind_required check (type <> 'other_org' or other_kind is not null),
+  -- Km bara på veckouppdrag och med rimligt tak, så lagmål inte kan blåsas upp.
+  constraint logs_km_weekly_only check (km is null or (type = 'weekly' and km <= 100))
 );
 
 create unique index logs_player_event_uidx
@@ -198,16 +206,35 @@ create policy team_goals_coach_all on public.team_goals
 -- Ingen UPDATE för spelare.
 create policy logs_select_own on public.logs
   for select to authenticated using (player_id = auth.uid());
+-- Träning/match kräver en icke inställd kalenderhändelse samma dag och av samma (effektiva) typ.
+-- Extrapass/veckouppdrag kräver ett aktivt uppdrag av rätt sort (daily/weekly).
 create policy logs_insert_own_recent on public.logs
   for insert to authenticated with check (
     player_id = auth.uid()
     and created_by = auth.uid()
     and date between (now() at time zone 'Europe/Stockholm')::date - 1
                  and (now() at time zone 'Europe/Stockholm')::date
+    and (
+      (type in ('training', 'match') and exists (
+        select 1 from public.calendar_events e
+        where e.uid = logs.event_uid
+          and e.date = logs.date
+          and not e.cancelled
+          and coalesce(e.kind_override, e.kind) = logs.type))
+      or (type in ('extra', 'weekly') and exists (
+        select 1 from public.missions m
+        where m.id = logs.mission_id
+          and m.kind = case logs.type when 'extra' then 'daily' else 'weekly' end
+          and m.active_from <= logs.date
+          and (m.active_to is null or m.active_to >= logs.date)))
+      or type = 'other_org'
+    )
   );
+-- Spelare får bara radera egna loggar de själva skapat, så tränarens rättningar står kvar.
 create policy logs_delete_own_recent on public.logs
   for delete to authenticated using (
     player_id = auth.uid()
+    and created_by = auth.uid()
     and date between (now() at time zone 'Europe/Stockholm')::date - 1
                  and (now() at time zone 'Europe/Stockholm')::date
   );

@@ -19,6 +19,9 @@ const COACH = '00000000-0000-0000-0000-0000000000cc';
 const GOAL_SESSIONS = '10000000-0000-0000-0000-000000000001';
 const GOAL_EXTRA = '10000000-0000-0000-0000-000000000002';
 const GOAL_KM = '10000000-0000-0000-0000-000000000003';
+const M_DAILY = '20000000-0000-0000-0000-000000000001';
+const M_WEEKLY = '20000000-0000-0000-0000-000000000002';
+const M_OLD = '20000000-0000-0000-0000-000000000003';
 
 const TODAY = "((now() at time zone 'Europe/Stockholm')::date)";
 
@@ -47,6 +50,14 @@ async function as<T>(sub: string | null, fn: (c: Client) => Promise<T>): Promise
   } finally {
     await db.query('rollback');
   }
+}
+
+/** Byt identitet mitt i en transaktion som startats av as(). */
+async function switchTo(c: Client, sub: string) {
+  await c.query('set local role authenticated');
+  await c.query("select set_config('request.jwt.claims', $1, true)", [
+    JSON.stringify({ sub, role: 'authenticated' }),
+  ]);
 }
 
 async function sqlState(p: Promise<unknown>): Promise<string | undefined> {
@@ -87,13 +98,23 @@ beforeAll(async () => {
     [A, B, COACH],
   );
   await db.query(
-    `insert into logs (player_id, date, type, km) values
-       ($1, ${TODAY},      'training', null),
-       ($1, ${TODAY} - 1,  'extra',    3),
-       ($2, ${TODAY},      'extra',    5),
-       ($2, ${TODAY} - 3,  'match',    null),
-       ($2, ${TODAY} - 30, 'extra',    100)`,
-    [A, B],
+    `insert into missions (id, kind, name, target_km, active_from, active_to) values
+       ($1, 'daily',  'Splits',   null, ${TODAY} - 60, null),
+       ($2, 'weekly', 'Löpning',  8,    ${TODAY} - 60, null),
+       ($3, 'daily',  'Gammalt',  null, ${TODAY} - 60, ${TODAY} - 10)`,
+    [M_DAILY, M_WEEKLY, M_OLD],
+  );
+  // I lagmålens intervall: A 3 st (1 extra, 3 km), B 3 st (1 extra, 5 km). B:s logg för 30 dagar sedan utanför.
+  await db.query(
+    `insert into logs (player_id, date, type, event_uid, mission_id, km) values
+       ($1, ${TODAY},      'match',  'ev-2',   null, null),
+       ($1, ${TODAY} - 1,  'extra',  null,     $3,   null),
+       ($1, ${TODAY} - 1,  'weekly', null,     $4,   3),
+       ($2, ${TODAY},      'extra',  null,     $3,   null),
+       ($2, ${TODAY},      'weekly', null,     $4,   5),
+       ($2, ${TODAY} - 3,  'match',  'ev-old', null, null),
+       ($2, ${TODAY} - 30, 'weekly', null,     $4,   100)`,
+    [A, B, M_DAILY, M_WEEKLY],
   );
   await db.query(
     `insert into team_goals (id, name, metric, target, starts_on, ends_on, reward) values
@@ -105,12 +126,14 @@ beforeAll(async () => {
   await db.query(
     `insert into calendar_events (uid, summary, kind, kind_override, date, starts_at, ends_at)
      values ('ev-1', 'Träning', 'training', null, ${TODAY}, now(), now()),
-            ('ev-2', 'Cup', 'other', 'match', ${TODAY}, now(), now())`,
+            ('ev-2', 'Cup', 'other', 'match', ${TODAY}, now(), now()),
+            ('ev-3', 'Inställd', 'training', null, ${TODAY}, now(), now())`,
+  );
+  await db.query(`update calendar_events set cancelled = true where uid = 'ev-3'`);
+  await db.query(
+    `insert into calendar_events (uid, summary, kind, date) values ('ev-y', 'Igår', 'training', ${TODAY} - 1)`,
   );
   await db.query(`insert into settings (key, value) values ('ical_url', 'https://hemligt')`);
-  await db.query(
-    `insert into missions (kind, name, active_from) values ('daily', 'Skott', ${TODAY})`,
-  );
 });
 
 afterAll(async () => {
@@ -121,7 +144,7 @@ describe('logs', () => {
   it('A ser 0 av B:s loggar men sina egna', async () => {
     await as(A, async (c) => {
       expect(await count(c, 'select count(*) n from logs where player_id = $1', [B])).toBe(0);
-      expect(await count(c, 'select count(*) n from logs')).toBe(2);
+      expect(await count(c, 'select count(*) n from logs')).toBe(3);
     });
   });
 
@@ -163,7 +186,10 @@ describe('logs', () => {
   it('A kan inte förfalska created_by', async () => {
     const code = await as(A, (c) =>
       sqlState(
-        c.query(`insert into logs (player_id, date, type, created_by) values ($1, ${TODAY}, 'extra', $2)`, [A, COACH]),
+        c.query(
+          `insert into logs (player_id, date, type, mission_id, created_by) values ($1, ${TODAY}, 'extra', $3, $2)`,
+          [A, COACH, M_DAILY],
+        ),
       ),
     );
     expect(code).toBe('42501');
@@ -173,7 +199,7 @@ describe('logs', () => {
     const code = await as(A, async (c) => {
       await c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY}, 'training', 'ev-1')`, [A]);
       return sqlState(
-        c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY} - 1, 'training', 'ev-1')`, [A]),
+        c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY}, 'training', 'ev-1')`, [A]),
       );
     });
     expect(code).toBe('23505');
@@ -187,7 +213,7 @@ describe('logs', () => {
       expect(del.rowCount).toBe(0);
       await c.query('reset role');
       expect(await count(c, 'select count(*) n from logs where player_id = $1 and km = 99', [B])).toBe(0);
-      expect(await count(c, 'select count(*) n from logs where player_id = $1', [B])).toBe(3);
+      expect(await count(c, 'select count(*) n from logs where player_id = $1', [B])).toBe(4);
     });
   });
 
@@ -201,18 +227,31 @@ describe('logs', () => {
   it('A kan radera egen logg inom fönstret men inte äldre', async () => {
     await as(A, async (c) => {
       await c.query('reset role');
-      await c.query(`insert into logs (player_id, date, type) values ($1, ${TODAY} - 5, 'extra')`, [A]);
-      await c.query('set local role authenticated');
+      await c.query(
+        `insert into logs (player_id, date, type, other_kind, created_by) values ($1, ${TODAY} - 5, 'other_org', 'fotboll', $1)`,
+        [A],
+      );
+      await switchTo(c, A);
+      await c.query(`insert into logs (player_id, date, type, other_kind) values ($1, ${TODAY}, 'other_org', 'fotboll')`, [A]);
       const old = await c.query(`delete from logs where player_id = $1 and date = ${TODAY} - 5`, [A]);
-      const recent = await c.query(`delete from logs where player_id = $1 and date = ${TODAY}`, [A]);
+      const recent = await c.query(`delete from logs where player_id = $1 and type = 'other_org' and date = ${TODAY}`, [A]);
       expect(old.rowCount).toBe(0);
       expect(recent.rowCount).toBe(1);
     });
   });
 
+  it('A kan inte radera en logg som tränaren skapat', async () => {
+    await as(COACH, async (c) => {
+      await c.query(`insert into logs (player_id, date, type, other_kind) values ($1, ${TODAY}, 'other_org', 'annat_lag')`, [A]);
+      await switchTo(c, A);
+      expect(await count(c, `select count(*) n from logs where created_by = $1`, [COACH])).toBe(1);
+      expect((await c.query(`delete from logs where created_by = $1`, [COACH])).rowCount).toBe(0);
+    });
+  });
+
   it('tränaren ser alla loggar och kan skriva för spelare', async () => {
     await as(COACH, async (c) => {
-      expect(await count(c, 'select count(*) n from logs')).toBe(5);
+      expect(await count(c, 'select count(*) n from logs')).toBe(7);
       const r = await c.query(`insert into logs (player_id, date, type) values ($1, ${TODAY} - 20, 'extra')`, [B]);
       expect(r.rowCount).toBe(1);
     });
@@ -307,8 +346,8 @@ describe('settings och invites', () => {
 describe('kalender, uppdrag och lagmål', () => {
   it('inloggad spelare kan läsa men inte skriva', async () => {
     await as(A, async (c) => {
-      expect(await count(c, 'select count(*) n from calendar_events')).toBe(2);
-      expect(await count(c, 'select count(*) n from missions')).toBe(1);
+      expect(await count(c, 'select count(*) n from calendar_events')).toBe(4);
+      expect(await count(c, 'select count(*) n from missions')).toBe(3);
       expect(await count(c, 'select count(*) n from team_goals')).toBe(3);
     });
     for (const sql of [
@@ -326,7 +365,7 @@ describe('kalender, uppdrag och lagmål', () => {
 
   it('vyn ger effektiv typ och respekterar RLS', async () => {
     await as(A, async (c) => {
-      const r = await c.query(`select uid, kind from calendar_events_effective order by uid`);
+      const r = await c.query(`select uid, kind from calendar_events_effective where uid in ('ev-1', 'ev-2') order by uid`);
       expect(r.rows).toEqual([
         { uid: 'ev-1', kind: 'training' },
         { uid: 'ev-2', kind: 'match' },
@@ -349,12 +388,97 @@ describe('kalender, uppdrag och lagmål', () => {
   });
 });
 
+describe('logs: dataintegritet (constraints, prövas som tränare)', () => {
+  const coachInsert = (cols: string, vals: string, params: unknown[]) =>
+    as(COACH, (c) => sqlState(c.query(`insert into logs (${cols}) values (${vals})`, params)));
+
+  it('veckouppdrag utan uppdrag avvisas', async () => {
+    expect(await coachInsert('player_id, date, type, km', `$1, ${TODAY}, 'weekly', 5`, [A])).toBe('23514');
+  });
+
+  it('km över 100 avvisas', async () => {
+    expect(
+      await coachInsert('player_id, date, type, mission_id, km', `$1, ${TODAY}, 'weekly', $2, 99999`, [A, M_WEEKLY]),
+    ).toBe('23514');
+  });
+
+  it('km på annat än veckouppdrag avvisas', async () => {
+    expect(
+      await coachInsert('player_id, date, type, event_uid, km', `$1, ${TODAY}, 'training', 'ev-1', 500`, [A]),
+    ).toBe('23514');
+    expect(await coachInsert('player_id, date, type, mission_id, km', `$1, ${TODAY}, 'extra', $2, 5`, [A, M_DAILY])).toBe(
+      '23514',
+    );
+  });
+
+  it('träning/match utan event_uid avvisas', async () => {
+    expect(await coachInsert('player_id, date, type', `$1, ${TODAY}, 'training'`, [A])).toBe('23514');
+    expect(await coachInsert('player_id, date, type', `$1, ${TODAY}, 'match'`, [A])).toBe('23514');
+  });
+
+  it('annan förening utan other_kind avvisas', async () => {
+    expect(await coachInsert('player_id, date, type', `$1, ${TODAY}, 'other_org'`, [A])).toBe('23514');
+  });
+
+  it('okänt mission_id avvisas och uppdrag med loggar kan inte raderas', async () => {
+    expect(
+      await coachInsert('player_id, date, type, mission_id', `$1, ${TODAY}, 'extra', gen_random_uuid()`, [A]),
+    ).toBe('23503');
+    expect(await as(COACH, (c) => sqlState(c.query('delete from missions where id = $1', [M_WEEKLY])))).toBe('23503');
+  });
+});
+
+describe('logs: spelarens insert kräver händelse eller aktivt uppdrag', () => {
+  const playerInsert = (cols: string, vals: string, params: unknown[]) =>
+    as(A, (c) => sqlState(c.query(`insert into logs (${cols}) values (${vals})`, params)));
+
+  it('sondens fall avvisas: veckouppdrag 99999 km, utan uppdrag, träning utan händelse', async () => {
+    expect(
+      await playerInsert('player_id, date, type, mission_id, km', `$1, ${TODAY}, 'weekly', $2, 99999`, [A, M_WEEKLY]),
+    ).toBe('23514');
+    expect(await playerInsert('player_id, date, type, km', `$1, ${TODAY}, 'weekly', 5`, [A])).toBe('42501');
+    expect(await playerInsert('player_id, date, type', `$1, ${TODAY}, 'training'`, [A])).toBe('42501');
+  });
+
+  it('giltiga loggar går igenom', async () => {
+    await as(A, async (c) => {
+      await c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY}, 'training', 'ev-1')`, [A]);
+      await c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY} - 1, 'training', 'ev-y')`, [A]);
+      await c.query(`insert into logs (player_id, date, type, mission_id) values ($1, ${TODAY}, 'extra', $2)`, [A, M_DAILY]);
+      await c.query(
+        `insert into logs (player_id, date, type, mission_id, km) values ($1, ${TODAY}, 'weekly', $2, 8)`,
+        [A, M_WEEKLY],
+      );
+      expect(await count(c, 'select count(*) n from logs')).toBe(7);
+    });
+  });
+
+  it('träning mot okänd, inställd, fel dags eller fel typs händelse avvisas', async () => {
+    const ins = (type: string, uid: string, date: string) =>
+      playerInsert('player_id, date, type, event_uid', `$1, ${date}, '${type}', $2`, [A, uid]);
+    expect(await ins('training', 'finns-inte', TODAY)).toBe('42501');
+    expect(await ins('training', 'ev-3', TODAY)).toBe('42501'); // inställd
+    expect(await ins('training', 'ev-1', `${TODAY} - 1`)).toBe('42501'); // fel datum
+    expect(await ins('match', 'ev-1', TODAY)).toBe('42501'); // fel typ
+    expect(await ins('training', 'ev-2', TODAY)).toBe('42501'); // kind_override = match
+  });
+
+  it('extrapass/veckouppdrag mot fel sorts, inaktivt eller saknat uppdrag avvisas', async () => {
+    const ins = (type: string, mission: string | null) =>
+      playerInsert('player_id, date, type, mission_id', `$1, ${TODAY}, '${type}', $2`, [A, mission]);
+    expect(await ins('extra', M_WEEKLY)).toBe('42501');
+    expect(await ins('extra', M_OLD)).toBe('42501');
+    expect(await ins('extra', null)).toBe('42501');
+    expect(await ins('weekly', M_DAILY)).toBe('42501');
+  });
+});
+
 describe('team_goal_total', () => {
   it('summerar både A:s och B:s loggar när A anropar', async () => {
     await as(A, async (c) => {
       const total = async (id: string) =>
         Number((await c.query('select team_goal_total($1) t', [id])).rows[0].t);
-      expect(await total(GOAL_SESSIONS)).toBe(4);
+      expect(await total(GOAL_SESSIONS)).toBe(6);
       expect(await total(GOAL_EXTRA)).toBe(2);
       expect(await total(GOAL_KM)).toBe(8);
     });
