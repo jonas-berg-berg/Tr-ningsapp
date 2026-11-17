@@ -26,7 +26,9 @@ select cron.schedule(
     headers := jsonb_build_object(
       'Authorization',
       'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
-    )
+    ),
+    -- Standard är 5 s; kalendersynken och utskicket kan ta längre tid.
+    timeout_milliseconds := 30000
   );
   $job$
 );
@@ -41,7 +43,9 @@ select cron.schedule(
     headers := jsonb_build_object(
       'Authorization',
       'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret')
-    )
+    ),
+    -- Standard är 5 s; kalendersynken och utskicket kan ta längre tid.
+    timeout_milliseconds := 30000
   );
   $job$
 );

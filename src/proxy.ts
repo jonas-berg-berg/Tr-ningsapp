@@ -1,18 +1,11 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-
-// Sidor som nås utan inloggning.
-function isPublicPath(pathname: string): boolean {
-  return (
-    pathname === '/login' ||
-    pathname.startsWith('/invite/') ||
-    pathname.startsWith('/api/cron/')
-  );
-}
+import { unauthenticatedAccess } from './lib/auth/route-access';
 
 /**
  * Förnyar Supabase-sessionen (cookies) på varje sidanrop och skickar
- * utloggade besökare till /login. Riktig behörighet avgörs av RLS.
+ * utloggade besökare till /login (API-anrop får 401 JSON). Riktig behörighet
+ * avgörs av RLS.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -21,7 +14,7 @@ export async function proxy(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     // Felkonfiguration: släpp inte igenom skyddade sidor.
-    if (isPublicPath(request.nextUrl.pathname)) return response;
+    if (unauthenticatedAccess(request.nextUrl.pathname) === 'allow') return response;
     return new NextResponse('Supabase är inte konfigurerat.', { status: 500 });
   }
 
@@ -43,7 +36,13 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicPath(request.nextUrl.pathname)) {
+  const access = user ? 'allow' : unauthenticatedAccess(request.nextUrl.pathname);
+  if (access === 'unauthorized') {
+    const unauthorized = NextResponse.json({ error: 'Inte inloggad' }, { status: 401 });
+    response.cookies.getAll().forEach((c) => unauthorized.cookies.set(c));
+    return unauthorized;
+  }
+  if (access === 'redirect') {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     loginUrl.search = '';

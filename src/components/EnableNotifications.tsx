@@ -56,6 +56,7 @@ export function EnableNotifications() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sub.toJSON()),
       });
+      // Icke-ok (t.ex. 401 när sessionen gått ut) är ett misslyckande, inte "på".
       setState(res.ok ? 'on' : 'error');
     } catch {
       setState('error');
@@ -68,12 +69,15 @@ export function EnableNotifications() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await fetch('/api/push/subscribe', {
+        const res = await fetch('/api/push/subscribe', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint: sub.endpoint }),
         });
+        // Avsluta lokalt ändå: då slutar notiserna komma till enheten, och servern
+        // rensar raden när push-tjänsten svarar 410. Men visa att något gick fel.
         await sub.unsubscribe();
+        if (!res.ok) return setState('error');
       }
       setState('off');
     } catch {

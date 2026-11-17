@@ -61,3 +61,20 @@ export async function removePlayer(_prev: FormState, formData: FormData): Promis
   revalidatePath('/tranare', 'layout');
   redirect('/tranare/spelare');
 }
+
+/** Tar bort en oanvänd inbjudan (tränarens egen klient, RLS invites_coach_all). Länken slutar fungera. */
+export async function deleteInvite(_prev: FormState, formData: FormData): Promise<FormState> {
+  const coach = await getCoach();
+  if (!coach) return { error: NOT_COACH };
+
+  const token = field(formData, 'token');
+  if (!UUID_RE.test(token)) return { error: GENERIC };
+
+  const { error } = await coach.supabase.from('invites').delete().eq('token', token).is('used_at', null);
+  if (error) {
+    console.error('Kunde inte ta bort inbjudan', { code: error.code });
+    return { error: GENERIC };
+  }
+  revalidatePath('/tranare/spelare');
+  return { ok: 'Inbjudan är borttagen.' };
+}

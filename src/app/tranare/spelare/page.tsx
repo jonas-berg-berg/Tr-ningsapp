@@ -3,9 +3,10 @@ import { Suspense } from 'react';
 import { ActionForm } from '@/components/coach/ActionForm';
 import { CopyLink } from '@/components/coach/CopyButton';
 import { requireCoachPage } from '@/lib/auth/require-coach';
+import { INVITE_VALID_DAYS, isInviteExpired } from '@/lib/invites';
 import { requestOrigin } from '@/lib/origin-server';
 import { loadPlayers } from '../data';
-import { createInvite, removePlayer } from './actions';
+import { createInvite, deleteInvite, removePlayer } from './actions';
 
 const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400';
 
@@ -26,10 +27,11 @@ async function Players({ searchParams }: Pick<PageProps<'/tranare/spelare'>, 'se
 
   const [people, invites, origin] = await Promise.all([
     loadPlayers(supabase),
-    supabase.from('invites').select('token, display_name, role').is('used_at', null).order('display_name'),
+    supabase.from('invites').select('token, display_name, role, created_at').is('used_at', null).order('display_name'),
     requestOrigin(),
   ]);
   if (invites.error) throw new Error(`Kunde inte läsa inbjudningar: ${invites.error.message}`);
+  const now = new Date();
   const toRemove = people.find((p) => p.id === removeId && p.role === 'player' && p.id !== userId);
 
   return (
@@ -74,16 +76,24 @@ async function Players({ searchParams }: Pick<PageProps<'/tranare/spelare'>, 'se
       {(invites.data ?? []).length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Inbjudningar som inte använts</h2>
+          <p className="text-sm text-zinc-400">En länk gäller i {INVITE_VALID_DAYS} dagar.</p>
           <ul className="flex flex-col gap-3">
-            {(invites.data ?? []).map((i) => (
-              <li key={i.token as string} className="flex flex-col gap-2 rounded-2xl bg-zinc-900 p-3">
-                <span className="font-semibold">
-                  {i.display_name as string}{' '}
-                  <span className="text-sm font-normal text-zinc-400">({i.role === 'coach' ? 'tränare' : 'spelare'})</span>
-                </span>
-                <CopyLink link={`${origin}/invite/${i.token as string}`} />
-              </li>
-            ))}
+            {(invites.data ?? []).map((i) => {
+              const expired = isInviteExpired(i.created_at as string, now);
+              return (
+                <li key={i.token as string} className="flex flex-col gap-2 rounded-2xl bg-zinc-900 p-3">
+                  <span className="font-semibold">
+                    {i.display_name as string}{' '}
+                    <span className="text-sm font-normal text-zinc-400">({i.role === 'coach' ? 'tränare' : 'spelare'})</span>
+                    {expired && <span className="text-sm font-normal text-red-400"> · har gått ut, skapa en ny</span>}
+                  </span>
+                  {!expired && <CopyLink link={`${origin}/invite/${i.token as string}`} />}
+                  <ActionForm action={deleteInvite} submitLabel="Ta bort inbjudan" pendingLabel="Tar bort…" variant="secondary" className="flex items-center gap-2">
+                    <input type="hidden" name="token" value={i.token as string} />
+                  </ActionForm>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

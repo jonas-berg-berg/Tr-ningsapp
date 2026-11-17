@@ -1,5 +1,6 @@
 import 'server-only';
 import * as webpush from 'web-push';
+import { secondsUntilStockholmMidnight } from './push-ttl';
 import type { PushResult } from './reminders-run';
 
 export { reminderMessage } from './reminder-message';
@@ -27,7 +28,8 @@ export async function sendPush(sub: PushSub, payload: { title: string; body: str
     await webpush.sendNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
       JSON.stringify({ ...payload, url: '/' }),
-      { TTL: 60 * 60 * 6 },
+      // Påminnelsen gäller bara dagen den skickas: släng den vid midnatt (Stockholm).
+      { TTL: secondsUntilStockholmMidnight(new Date()) },
     );
     return 'sent';
   } catch (e) {

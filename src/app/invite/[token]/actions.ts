@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { normalizeUsername, usernameToEmail } from '@/lib/auth/username';
+import { inviteCutoff } from '@/lib/invites';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { INVALID_INVITE, isValidToken } from './invite';
@@ -28,12 +29,14 @@ export async function redeemInvite(token: string, _prev: InviteState, formData: 
 
   const admin = createAdminClient();
 
-  // 1. Lås inbjudan.
+  // 1. Lås inbjudan (bara oanvända som är högst 7 dagar gamla).
+  const now = new Date();
   const { data: invite, error: claimError } = await admin
     .from('invites')
-    .update({ used_at: new Date().toISOString() })
+    .update({ used_at: now.toISOString() })
     .eq('token', token)
     .is('used_at', null)
+    .gte('created_at', inviteCutoff(now))
     .select('display_name, role')
     .maybeSingle();
   if (claimError) return { error: GENERIC };
