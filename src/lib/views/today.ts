@@ -23,9 +23,17 @@ export interface TodayView {
   dayStreak: number;
   weekStreak: number;
   frozenThisWeek: boolean;
-  events: { uid: string; kind: 'training' | 'match'; title: string; time: string; checked: boolean }[];
-  otherOrg: { checked: boolean; kind: OtherOrgKind | null };
-  extra: { missionId: string; name: string; description: string | null; checked: boolean; emphasized: boolean } | null;
+  // logId: dagens logg (för ångra), annars null.
+  events: { uid: string; kind: 'training' | 'match'; title: string; time: string; checked: boolean; logId: string | null }[];
+  otherOrg: { checked: boolean; kind: OtherOrgKind | null; logId: string | null };
+  extra: {
+    missionId: string;
+    name: string;
+    description: string | null;
+    checked: boolean;
+    emphasized: boolean;
+    logId: string | null;
+  } | null;
   weekly: {
     missionId: string;
     name: string;
@@ -33,6 +41,8 @@ export interface TodayView {
     doneKm: number;
     complete: boolean;
     availableToday: boolean;
+    /** Vyns dags löplogg (en per dag och uppdrag), för visning och ångra. */
+    todayLog: { id: string; km: number | null } | null;
   } | null;
   goals: { id: string; name: string; metric: TeamGoal['metric']; total: number; target: number; reward: string }[];
   canLogYesterday: boolean;
@@ -66,25 +76,31 @@ export function buildTodayView(input: TodayInput): TodayView {
   const events = input.events
     .filter((e) => e.date === today && !e.cancelled && (e.kind === 'training' || e.kind === 'match'))
     .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
-    .map((e) => ({
-      uid: e.uid,
-      kind: e.kind as 'training' | 'match',
-      title: e.summary,
-      time: timeFormat.format(e.startsAt),
-      checked: logs.some((l) => l.eventUid === e.uid),
-    }));
+    .map((e) => {
+      const logged = logs.find((l) => l.eventUid === e.uid);
+      return {
+        uid: e.uid,
+        kind: e.kind as 'training' | 'match',
+        title: e.summary,
+        time: timeFormat.format(e.startsAt),
+        checked: logged !== undefined,
+        logId: logged?.id ?? null,
+      };
+    });
 
   const otherLog = todaysLogs.find((l) => l.type === 'other_org');
   const organized = todaysLogs.some((l) => l.type === 'training' || l.type === 'match' || l.type === 'other_org');
 
   const daily = activeMission(missions, 'daily', today);
+  const extraLog = todaysLogs.find((l) => l.type === 'extra');
   const extra = daily
     ? {
         missionId: daily.id,
         name: daily.name,
         description: daily.description,
-        checked: todaysLogs.some((l) => l.type === 'extra'),
+        checked: extraLog !== undefined,
         emphasized: !organized,
+        logId: extraLog?.id ?? null,
       }
     : null;
 
@@ -96,6 +112,7 @@ export function buildTodayView(input: TodayInput): TodayView {
       (l) => l.type === 'weekly' && l.missionId === weeklyMission.id && isoWeekKey(l.date) === week,
     );
     const doneKm = mine.reduce((sum, l) => sum + (l.km ?? 0), 0);
+    const todayLog = mine.find((l) => l.date === today);
     weekly = {
       missionId: weeklyMission.id,
       name: weeklyMission.name,
@@ -103,6 +120,7 @@ export function buildTodayView(input: TodayInput): TodayView {
       doneKm,
       complete: weeklyMission.targetKm === null ? mine.length > 0 : doneKm >= weeklyMission.targetKm,
       availableToday: weeklyMission.weekdays.length === 0 || weeklyMission.weekdays.includes(isoWeekday(today)),
+      todayLog: todayLog ? { id: todayLog.id, km: todayLog.km } : null,
     };
   }
 
@@ -115,7 +133,7 @@ export function buildTodayView(input: TodayInput): TodayView {
     weekStreak: weekStreak(completedWeeks(logs, missions), now),
     frozenThisWeek: streak.frozenDates.some((d) => isoWeekKey(d) === currentWeek),
     events,
-    otherOrg: { checked: otherLog !== undefined, kind: otherLog?.otherKind ?? null },
+    otherOrg: { checked: otherLog !== undefined, kind: otherLog?.otherKind ?? null, logId: otherLog?.id ?? null },
     extra,
     weekly,
     goals: input.goals

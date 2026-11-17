@@ -75,7 +75,7 @@ describe('buildTodayView – händelser', () => {
       events: [ev({ ...photo, kind: 'training' })],
     }));
     expect(view.events).toEqual([
-      { uid: 'photo', kind: 'training', title: 'Fotografering  - P11/12', time: '10:00', checked: false },
+      { uid: 'photo', kind: 'training', title: 'Fotografering  - P11/12', time: '10:00', checked: false, logId: null },
     ]);
   });
 
@@ -104,7 +104,7 @@ describe('buildTodayView – extrapass', () => {
       logs: [log({ type: 'other_org', otherKind: 'fotboll' })],
     }));
     expect(view.extra?.emphasized).toBe(false);
-    expect(view.otherOrg).toEqual({ checked: true, kind: 'fotboll' });
+    expect(view.otherOrg).toMatchObject({ checked: true, kind: 'fotboll' });
   });
 
   it('checked när extrapasset är loggat idag', () => {
@@ -198,5 +198,33 @@ describe('buildTodayView – streaks, lagmål och igår', () => {
       log({ id: '2', date: '2026-11-17', type: 'other_org', otherKind: 'ovrigt' }),
     ];
     expect(buildTodayView(input({ today: '2026-11-16', now: '2026-11-17', logs })).dayStreak).toBe(2);
+  });
+});
+
+describe('buildTodayView – logg-id för ångra', () => {
+  it('ger id på dagens loggar så att de kan ångras', () => {
+    const view = buildTodayView(input({
+      today: '2026-11-21',
+      missions: [daily, weekly],
+      events: [ev({ uid: 't1', date: '2026-11-21' })],
+      logs: [
+        log({ id: 'L1', date: '2026-11-21', type: 'training', eventUid: 't1' }),
+        log({ id: 'L2', date: '2026-11-21', type: 'other_org', otherKind: 'annat_lag' }),
+        log({ id: 'L3', date: '2026-11-21', type: 'extra', missionId: 'd1' }),
+        log({ id: 'L4', date: '2026-11-21', type: 'weekly', missionId: 'w1', km: 4 }),
+      ],
+    }));
+    expect(view.events[0].logId).toBe('L1');
+    expect(view.otherOrg.logId).toBe('L2');
+    expect(view.extra?.logId).toBe('L3');
+    expect(view.weekly?.todayLog).toEqual({ id: 'L4', km: 4 });
+  });
+
+  it('null när inget är loggat', () => {
+    const view = buildTodayView(input({ missions: [daily, weekly], events: [ev({ uid: 't1' })] }));
+    expect(view.events[0].logId).toBeNull();
+    expect(view.otherOrg.logId).toBeNull();
+    expect(view.extra?.logId).toBeNull();
+    expect(view.weekly?.todayLog).toBeNull();
   });
 });
