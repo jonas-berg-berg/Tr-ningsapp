@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { parseKm } from '@/lib/actions/log-result';
 import { field, isISODate, UUID_RE, type FormState } from '@/lib/actions/form-state';
+import { passwordResetError } from '@/lib/auth/password-reset';
 import { getCoach, NOT_COACH } from '@/lib/auth/require-coach';
 import { toStockholmDate } from '@/lib/dates';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { OtherOrgKind } from '@/lib/types';
 
 const GENERIC = 'Något gick fel. Försök igen.';
@@ -93,4 +95,40 @@ export async function deleteLog(_prev: FormState, formData: FormData): Promise<F
   revalidatePath(`/tranare/spelare/${playerId}`);
   if (!data || data.length === 0) return { error: 'Passet finns inte längre.' };
   return { ok: 'Borttaget.' };
+}
+
+/**
+ * "Nytt lösenord": tränaren sätter ett nytt lösenord åt en spelare som glömt
+ * sitt, så att historiken finns kvar (i stället för Ta bort + ny inbjudan).
+ * Rollkontroll och spelarkontroll med tränarens egen klient (RLS), sedan
+ * admin-klienten bara för själva lösenordsbytet.
+ */
+export async function setPlayerPassword(_prev: FormState, formData: FormData): Promise<FormState> {
+  const coach = await getCoach();
+  if (!coach) return { error: NOT_COACH };
+
+  const targetId = field(formData, 'player_id');
+  // Inte trimmat: mellanslag i lösenordet är tillåtna.
+  const rawPassword = formData.get('password');
+  const password = typeof rawPassword === 'string' ? rawPassword : '';
+
+  let targetRole: 'player' | 'coach' | null = null;
+  if (UUID_RE.test(targetId)) {
+    const { data: profile, error } = await coach.supabase.from('profiles').select('role').eq('id', targetId).maybeSingle();
+    if (error) {
+      console.error('Kunde inte läsa spelaren', { code: error.code });
+      return { error: GENERIC };
+    }
+    targetRole = (profile?.role as 'player' | 'coach' | undefined) ?? null;
+  }
+  const problem = passwordResetError({ coachId: coach.userId, targetId, targetRole, password });
+  if (problem) return { error: problem };
+
+  const { error } = await createAdminClient().auth.admin.updateUserById(targetId, { password });
+  if (error) {
+    console.error('Kunde inte byta lösenord', { code: error.code });
+    if (error.code === 'weak_password') return { error: 'Lösenordet är för svagt. Välj ett längre.' };
+    return { error: GENERIC };
+  }
+  return { ok: 'Lösenordet är bytt. Berätta det nya lösenordet för spelaren.' };
 }

@@ -10,7 +10,7 @@ import { toMission } from '@/lib/supabase/rows';
 import type { LogType, Mission, OtherOrgKind } from '@/lib/types';
 import { buildMonthStats, parseMonth, shiftMonth } from '@/lib/views/stats';
 import { loadLogs } from '../../data';
-import { addLog, deleteLog } from './actions';
+import { addLog, deleteLog, setPlayerPassword } from './actions';
 
 const TYPE_LABELS: Record<LogType, string> = {
   training: 'Lagträning',
@@ -49,7 +49,7 @@ async function PlayerDetail({ params, searchParams }: PageProps<'/tranare/spelar
   const date = typeof datum === 'string' && isISODate(datum) && datum <= today ? datum : today;
 
   const [profile, logs, logRows, missions, events] = await Promise.all([
-    supabase.from('profiles').select('display_name').eq('id', id).maybeSingle(),
+    supabase.from('profiles').select('display_name, username').eq('id', id).maybeSingle(),
     loadLogs(supabase, id),
     // Månadens loggar med händelsetitel, för listan.
     supabase
@@ -191,6 +191,21 @@ async function PlayerDetail({ params, searchParams }: PageProps<'/tranare/spelar
               <input name="km" inputMode="decimal" placeholder="t.ex. 4,5" className={input} />
             </label>
           )}
+        </ActionForm>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-2xl bg-zinc-900 p-4">
+        <h2 className="font-bold">Nytt lösenord</h2>
+        <p className="text-sm text-zinc-400">
+          Har {name} glömt lösenordet? Sätt ett nytt här och berätta det för spelaren. Användarnamnet är{' '}
+          <span className="font-semibold text-zinc-100">{profile.data.username as string}</span>. Loggarna finns kvar.
+        </p>
+        <ActionForm action={setPlayerPassword} submitLabel="Spara nytt lösenord" pendingLabel="Sparar…">
+          <input type="hidden" name="player_id" value={id} />
+          <label className="flex flex-col gap-1 text-sm">
+            Nytt lösenord (minst 8 tecken)
+            <input name="password" type="text" required minLength={8} maxLength={72} autoComplete="off" className={input} />
+          </label>
         </ActionForm>
       </section>
     </main>
