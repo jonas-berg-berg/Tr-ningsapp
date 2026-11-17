@@ -85,7 +85,7 @@ export interface TeamGoal { id: string; name: string; metric: 'sessions' | 'extr
 
 ---
 
-### Uppgift 1: Projektgrund och datumfunktioner
+### Task 1: Projektgrund och datumfunktioner
 
 **Filer:**
 - Skapa: Next.js-projekt i repo-roten (`npx create-next-app@latest . --ts --tailwind --app --src-dir --eslint --no-import-alias`), `vitest.config.ts`, `src/lib/types.ts`, `src/lib/dates.ts`
@@ -117,7 +117,7 @@ expect(weekDates('2026-W47')).toEqual(['2026-11-16','2026-11-17','2026-11-18','2
 - [ ] **Steg 5: Kör `npm test`. Förväntat: PASS.**
 - [ ] **Steg 6: Commit `feat: projektgrund och Stockholmsdatum`**
 
-### Uppgift 2: Läsa och klassa Sportadmin-kalendern
+### Task 2: Läsa och klassa Sportadmin-kalendern
 
 **Filer:**
 - Skapa: `src/lib/sportadmin/classify.ts`, `src/lib/sportadmin/parse.ts`, `tests/fixtures/sportadmin.ics`
@@ -155,7 +155,7 @@ expect(ev.every(e => e.uid.length > 0)).toBe(true);
 - [ ] **Steg 4: Kör testerna. Förväntat: PASS.**
 - [ ] **Steg 5: Commit `feat: läsa och klassa Sportadmin-kalendern`**
 
-### Uppgift 3: Streaks med frysdag
+### Task 3: Streaks med frysdag
 
 **Filer:**
 - Skapa: `src/lib/streaks.ts`
@@ -197,7 +197,7 @@ expect(weekStreak(new Set(['2026-W45']), '2026-11-18')).toBe(0);                
 - [ ] **Steg 4: Kör testerna. Förväntat: PASS.**
 - [ ] **Steg 5: Commit `feat: dag- och veckostreaks med frysdag`**
 
-### Uppgift 4: Databas, behörigheter och Supabase-klienter
+### Task 4: Databas, behörigheter och Supabase-klienter
 
 **Filer:**
 - Skapa: `supabase/migrations/0001_init.sql`, `supabase/tests/rls.test.sql`, `src/lib/supabase/server.ts` (cookies, anon-nyckel), `src/lib/supabase/client.ts`, `src/lib/supabase/admin.ts` (service role, endast server), `.env.example`
@@ -239,7 +239,7 @@ expect(weekStreak(new Set(['2026-W45']), '2026-11-18')).toBe(0);                
 - [ ] **Steg 5: Skapa de tre Supabase-klienterna och `.env.example`** med `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` och `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. `admin.ts` börjar med `import 'server-only'`.
 - [ ] **Steg 6: Commit `feat: databasschema med RLS`**
 
-### Uppgift 5: Synk av Sportadmin-kalendern
+### Task 5: Synk av Sportadmin-kalendern
 
 **Filer:**
 - Skapa: `src/lib/sportadmin/diff.ts`, `src/app/api/cron/sync-calendar/route.ts`, `src/lib/cron-auth.ts`
@@ -274,7 +274,7 @@ expect(isAuthorizedCron(new Request('http://x'), 's')).toBe(false);
 - [ ] **Steg 5: Kör testerna. Förväntat: PASS. Manuellt: lägg in Jonas länk i lokala `settings` och kör `curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/sync-calendar`. Förväntat: `upserted` > 0.**
 - [ ] **Steg 6: Commit `feat: synk av Sportadmin-kalendern`**
 
-### Uppgift 6: Loggregler, lagmål och påminnelsebeslut
+### Task 6: Loggregler, lagmål och påminnelsebeslut
 
 **Filer:**
 - Skapa: `src/lib/logging.ts`, `src/lib/goals.ts`, `src/lib/reminders.ts`
@@ -314,7 +314,7 @@ expect(canPlayerLog('2026-11-19','2026-11-18')).toBe(false);
 - [ ] **Steg 4: Kör testerna. Förväntat: PASS.**
 - [ ] **Steg 5: Commit `feat: loggregler, lagmål och påminnelsebeslut`**
 
-### Uppgift 7: Inloggning, inbjudningar och spelarens startsida
+### Task 7: Inloggning, inbjudningar och spelarens startsida
 
 **Filer:**
 - Skapa: `src/lib/auth/username.ts`, `src/lib/views/today.ts`, `src/middleware.ts` (sessionsuppdatering och skydd av allt utom `/login` och `/invite/*`), `src/app/login/page.tsx`, `src/app/invite/[token]/page.tsx` och `actions.ts`, `src/app/(player)/page.tsx`, `src/app/(player)/actions.ts`, `src/components/` (TodayCard, StreakBadge, GoalMeter)
@@ -370,7 +370,7 @@ interface TodayView {
 - [ ] **Steg 7: Manuellt test lokalt:** skapa en inbjudan direkt i databasen, lös in den, kryssa i en träning två gånger snabbt och kontrollera att det blir en enda rad i `logs`.
 - [ ] **Steg 8: Commit `feat: inloggning, inbjudningar och startsida`**
 
-### Uppgift 8: Personlig statistik och tränarvy
+### Task 8: Personlig statistik och tränarvy
 
 **Filer:**
 - Skapa: `src/lib/views/stats.ts`, `src/lib/views/coach.ts`, `src/app/(player)/statistik/page.tsx`, `src/app/tranare/page.tsx`, `src/app/tranare/spelare/[id]/page.tsx`, `src/app/tranare/{spelare,uppdrag,lagmal,kalender,installningar}/page.tsx` med `actions.ts`
@@ -404,7 +404,7 @@ interface TodayView {
   Alla `/tranare`-sidor kontrollerar `role = 'coach'` på servern och skickar annars vidare till `/`.
 - [ ] **Steg 6: Commit `feat: statistik och tränarvy`**
 
-### Uppgift 9: PWA och påminnelser
+### Task 9: PWA och påminnelser
 
 **Filer:**
 - Skapa: `public/manifest.webmanifest`, `public/sw.js`, ikoner i `public/icons/` (192 och 512, enkel platshållare), `src/components/InstallGuide.tsx`, `src/components/EnableNotifications.tsx`, `src/app/api/push/subscribe/route.ts`, `src/app/api/cron/reminders/route.ts`, `src/lib/push.ts`
@@ -435,7 +435,7 @@ Exakta texter:
 - [ ] **Steg 6: Manuellt test:** kör `npx web-push generate-vapid-keys`, prenumerera i Chrome lokalt, sätt systemklockan eller injicera `now` via `?now=` (bara när `NODE_ENV !== 'production'`) och kontrollera att notisen kommer.
 - [ ] **Steg 7: Commit `feat: PWA och påminnelser`**
 
-### Uppgift 10: Driftsättning och guide för Jonas
+### Task 10: Driftsättning och guide för Jonas
 
 **Filer:**
 - Skapa: `supabase/migrations/0002_cron.sql`, `README.md` (svenska)
