@@ -32,7 +32,7 @@ Du behöver också Node.js installerat på datorn (version 20 eller nyare, hämt
 4. Vänta tills projektet är klart (någon minut).
 5. Spara också **Project ref** (en kort kod i projektets URL, `https://supabase.com/dashboard/project/<project-ref>`).
 
-Rekommenderat: stäng av öppna registreringar, så att ingen utanför laget kan skapa konton. I Supabase, under Authentication (inställningar för inloggning), stäng av att nya användare får registrera sig själva. Appen skapar konton själv via inbjudningslänkarna och påverkas inte.
+**Obligatoriskt: stäng av nya registreringar.** I Supabase, under Authentication (inställningar för inloggning, ofta *Sign In / Providers* eller *Settings*), stäng av att nya användare får registrera sig själva (*Allow new users to sign up*). Appens publika nyckel (`anon`) syns i webbläsaren, så utan det här steget kan vem som helst skapa ett konto direkt mot Supabase. Ett sådant konto ser ingenting i appen (behörighetsreglerna kräver en profil, som bara skapas via en inbjudan, och appen visar "Ditt konto är inte kopplat till laget"), men det här är det första skyddet för spelarnas träningstider, platser och lagets data. Appen skapar konton själv via inbjudningslänkarna och påverkas inte.
 
 ### 2. Skapa databasen med Supabase CLI
 
@@ -130,7 +130,7 @@ https://din-app.vercel.app/invite/<token>
 
 Välj användarnamn och lösenord (minst 8 tecken, spara i lösenordshanteraren). Du är nu inloggad som tränare. På startsidan finns en knapp till **Tränarvyn**.
 
-Länken fungerar bara en gång.
+Länken fungerar bara en gång och gäller i 7 dagar.
 
 ### 7. Ställ in appen som tränare
 
@@ -139,11 +139,13 @@ I Tränarvyn finns menyn Översikt, Spelare, Uppdrag, Lagmål, Kalender och Inst
 1. **Inställningar:** klistra in Sportadmin-länken (kalenderlänken/prenumerationslänken till lagets kalender) och tryck *Spara länk*, därefter *Synka nu*. Under **Kalender** ska du nu se de kommande träningarna och matcherna. Länken är hemlig och visas bara maskerad i appen.
 2. **Uppdrag:** skapa det dagliga uppdraget (typ *Dagligt extrapass*, t.ex. namn "Splits 3×10"). Skapa veckouppdraget (typ *Veckouppdrag*, t.ex. "Löpning", km-mål 8, kryssa dagarna lör och sön).
 3. **Lagmål:** skapa ett lagmål, t.ex. "200 pass före jul", välj vad som räknas, målvärde och datum (och en belöning om ni vill).
-4. **Spelare:** skriv spelarens förnamn, välj *Spelare* och tryck *Skapa inbjudan*. Kopiera länken och skicka den i lagchatten (eller direkt till spelaren). Gör en inbjudan per spelare, länken fungerar bara en gång.
+4. **Spelare:** skriv spelarens förnamn, välj *Spelare* och tryck *Skapa inbjudan*. Kopiera länken och skicka den i lagchatten (eller direkt till spelaren). Gör en inbjudan per spelare. Länken fungerar bara en gång och gäller i 7 dagar. Oanvända inbjudningar listas under *Inbjudningar som inte använts*, där du kan *Ta bort inbjudan* (länken slutar då fungera) om den hamnat fel.
 
 Kalendern synkas automatiskt varje timme (vid minut 5). Påminnelser skickas av det andra jobbet.
 
 ### 8. Spelarna kommer igång
+
+**Innan du skickar riktiga inbjudningar:** gå igenom *Testa hela flödet med en testspelare* under "Kontrollera att allt fungerar" nedan.
 
 Varje spelare:
 
@@ -171,9 +173,30 @@ Byt ut adressen och hemligheten. De här kommandona kan köras i terminalen på 
   ```
 
   Synk-anropet ger 200 först när Sportadmin-länken är inlagd (steg 7). Utan länk får du ett felmeddelande, vilket är väntat.
+- [ ] **Nya registreringar är avstängda** i Supabase (Authentication, *Allow new users to sign up* är av), se steg 1.
 - [ ] Tränarvyn, Kalender, visar veckans träningar från Sportadmin.
-- [ ] En testspelare på iPhone kan installera appen, slå på notiser och registrera ett pass.
 - [ ] De schemalagda jobben går: i Supabase SQL Editor, `select jobname, schedule from cron.job;` ska visa `sync-calendar` och `send-reminders` med `5 * * * *`. Efter nästa hela timme visar `select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;` om de lyckades. (Jobben skickar anropet och loggar det i pg_net, svaret syns i `select status_code, content from net._http_response order by created desc limit 5;`.)
+
+### Testa hela flödet med en testspelare innan riktiga inbjudningar
+
+Delar av flödet (inloggningen hos Supabase, notiserna och de schemalagda jobben) går bara att prova på riktigt. Gör det med en testspelare, t.ex. "Test", innan lagets spelare får sina länkar.
+
+- [ ] **Inbjudan:** Tränarvyn, Spelare: skriv `Test`, välj *Spelare*, *Skapa inbjudan* och kopiera länken.
+- [ ] **Konto:** öppna länken på en telefon (gärna en iPhone), välj användarnamn och lösenord. Du ska hamna på startsidan med "Hej Test!".
+  - Får du ett fel om e-postformat eller en ogiltig adress när kontot skapas: appen ger varje spelare en intern adress som slutar på `.invalid` (funktionen `usernameToEmail` i `src/lib/auth/username.ts`). Godkänner inte Supabase den domänen måste den bytas i koden, till exempel till en domän ni äger, **innan någon riktig spelare skapar konto**. Användarnamnet blir en del av adressen, så den går inte att byta i efterhand för befintliga konton.
+- [ ] **Logga in:** tryck *Logga ut* längst ned på startsidan och logga in igen med användarnamn och lösenord.
+- [ ] **Kryssa:** installera appen på hemskärmen (steg 8), tryck *Slå på notiser* och kryssa *Jag var på lagträningen* (eller *Annan träning* om det inte finns någon träning idag). Streaken ska visa 1 dag.
+- [ ] **Ångra:** tryck på samma rad igen. Krysset ska försvinna och streaken gå tillbaka. (Löpning i veckouppdraget ångras med *Ångra*.)
+- [ ] **Påminnelse:** se till att testspelaren inte har något pass idag och vänta till kl. 19:00 (svensk tid). En notis ska komma. Det går inte att tidsresa i produktion (`?now=` fungerar bara lokalt), så kontrollera alternativt efter kl. 19:05 i Supabase SQL Editor:
+
+  ```sql
+  select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;
+  select status_code, content from net._http_response order by created desc limit 5;
+  ```
+
+  Svaret från 19-körningen ska vara `{"sent":1,...}` (eller fler om fler har notiser på). Ett manuellt `curl` med hemligheten (ovan) skickar bara påminnelser om det råkar vara rätt timme.
+- [ ] **Nytt lösenord:** Tränarvyn, Spelare, *Test*, rutan *Nytt lösenord*: sätt ett nytt och logga in med det.
+- [ ] **Städa:** ta bort testspelaren (Tränarvyn, Spelare, *Ta bort*).
 
 ## Innan ni startar: GDPR-checklista
 
@@ -182,6 +205,7 @@ Appen är gjord för att spara så lite som möjligt. Stäm av med föreningen i
 - [ ] Bara **förnamn och användarnamn** sparas om spelaren, plus de pass spelaren själv loggar. Ingen e-postadress, inga foton, inga personnummer.
 - [ ] Datan ligger i **EU** (Supabase-regionen i steg 1, och gärna Vercels EU-region i steg 4).
 - [ ] Du vet **vilka som har tränaråtkomst** (varje tränarkonto skapas med en inbjudan med rollen *Tränare*). Ge den bara till dem som behöver den.
+- [ ] **Nya registreringar är avstängda** i Supabase (steg 1), så att bara inbjudna har konton.
 - [ ] Du vet hur en spelare **tas bort**: Tränarvyn, Spelare, *Ta bort* vid spelarens namn. Kontot och alla spelarens loggar raderas för gott (lagmålens summor sjunker i samma veva).
 - [ ] Prata med föreningens **GDPR-ansvarige** (eller styrelsen) om att appen finns, vad den sparar och vem som är ansvarig.
 - [ ] **Föräldrarna är informerade** innan barn under 18 får sina länkar, om vad som sparas och hur man begär radering.
@@ -202,7 +226,16 @@ Appen är gjord för att spara så lite som möjligt. Stäm av med föreningen i
 - Kontrollera att `app_url` och `cron_secret` i Vault är rätt (steg 5) och att kommandot med `curl` och hemlighet ger 200.
 
 **En spelare har glömt sitt lösenord**
-Appen har ingen e-post och därmed ingen "glömt lösenord". Gör så här: Tränarvyn, Spelare, *Ta bort* spelaren, skapa sedan en ny inbjudan och skicka den. Observera att spelarens tidigare loggar tas bort tillsammans med kontot.
+Appen har ingen e-post och därmed ingen "glömt lösenord"-länk. Gör så här: Tränarvyn, Spelare, klicka på spelarens namn och fyll i rutan *Nytt lösenord* (minst 8 tecken), tryck *Spara nytt lösenord* och berätta lösenordet för spelaren. Användarnamnet visas i samma ruta. Spelarens loggar och streaks finns kvar. Ta **inte** bort spelaren för att ge en ny inbjudan, då raderas all historik.
+
+**En inbjudningslänk är "ogiltig eller redan använd"**
+Länken har redan använts, tagits bort eller är äldre än 7 dagar. Skapa en ny inbjudan under Tränarvyn, Spelare.
+
+**Någon ser "Ditt konto är inte kopplat till laget"**
+Kontot finns i Supabase men har ingen profil i laget, t.ex. för att någon registrerat sig själv innan registreringen stängdes av (steg 1). Kontot ser ingen data. Ta bort det i Supabase under Authentication, Users, och kontrollera att nya registreringar är avstängda.
+
+**Notiser kommer till fel person på en delad telefon**
+Notiserna följer den som senast slog på dem på telefonen. Den som lämnar telefonen ska trycka *Logga ut*, då stängs telefonens notiser av. Nästa person loggar in och trycker *Slå på notiser*.
 
 **Cron-jobben verkar inte köra**
 Kör `select * from cron.job;` i SQL Editor. Saknas jobben, kör `npx supabase db push` igen. Kontrollera sedan Vault enligt ovan.
