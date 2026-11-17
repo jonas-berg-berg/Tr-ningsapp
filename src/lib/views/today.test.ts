@@ -140,6 +140,40 @@ describe('buildTodayView – veckouppdrag', () => {
     expect(full.weekly).toMatchObject({ doneKm: 8, complete: true });
   });
 
+  it('byte mitt i veckan: vyn visar veckans styrande uppdrag och stämmer med veckostreaken', () => {
+    const old8: Mission = { ...weekly, id: 'old', activeTo: '2026-11-18' }; // lör–sön, avslutas ons
+    const new10: Mission = { ...weekly, id: 'new', targetKm: 10, weekdays: [], activeFrom: '2026-11-19' };
+    const missions = [old8, new10];
+    const prev = log({ id: 'p', date: '2026-11-14', type: 'weekly', missionId: 'old', km: 8 });
+    // Onsdag: det gamla uppdraget kan inte längre loggas, det nya visas men gäller från torsdag.
+    const wed = buildTodayView(input({ today: '2026-11-18', missions, logs: [prev] }));
+    expect(wed.weekly).toMatchObject({ missionId: 'new', availableToday: false, complete: false });
+    expect(wed.weekStreak).toBe(1);
+
+    const logs = [
+      prev,
+      log({ id: 'a', date: '2026-11-21', type: 'weekly', missionId: 'new', km: 6 }),
+      log({ id: 'b', date: '2026-11-22', type: 'weekly', missionId: 'new', km: 4 }),
+    ];
+    const sun = buildTodayView(input({ today: '2026-11-22', missions, logs }));
+    expect(sun.weekly).toMatchObject({ missionId: 'new', doneKm: 10, complete: true, availableToday: true });
+    expect(sun.weekStreak).toBe(2);
+  });
+
+  it('vecka utan veckouppdrag bryter inte veckostreaken', () => {
+    const a: Mission = { ...weekly, id: 'a', activeTo: '2026-11-08' };
+    const b: Mission = { ...weekly, id: 'b', activeFrom: '2026-11-16' };
+    const view = buildTodayView(input({
+      today: '2026-11-22',
+      missions: [a, b],
+      logs: [
+        log({ id: '1', date: '2026-11-07', type: 'weekly', missionId: 'a', km: 8 }),
+        log({ id: '2', date: '2026-11-21', type: 'weekly', missionId: 'b', km: 8 }),
+      ],
+    }));
+    expect(view.weekStreak).toBe(2);
+  });
+
   it('är null utan aktivt veckouppdrag', () => {
     expect(buildTodayView(input({ missions: [daily] })).weekly).toBeNull();
   });

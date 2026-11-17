@@ -8,8 +8,17 @@ describe('reminderMessage', () => {
       body: 'Logga dagens träning innan midnatt.',
     });
   });
+  it('daily utan streak och utan aktivt dagligt uppdrag', () => {
+    expect(reminderMessage('daily', 0, false)).toEqual({
+      title: 'Dags att träna 💪',
+      body: 'Logga dagens träning innan midnatt.',
+    });
+  });
+  it('daily med streak oberoende av dagligt uppdrag', () => {
+    expect(reminderMessage('daily', 2, false).title).toBe('Din streak på 2 dagar väntar 🔥');
+  });
   it('daily utan streak', () => {
-    expect(reminderMessage('daily', 0)).toEqual({
+    expect(reminderMessage('daily', 0, true)).toEqual({
       title: 'Dags att träna 💪',
       body: 'Gör dagens extrapass och starta en ny streak.',
     });

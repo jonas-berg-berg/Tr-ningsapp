@@ -59,7 +59,7 @@ export async function runReminders(deps: RemindersDeps = {}): Promise<{ sent: nu
   let sent = 0;
   const gone: string[] = [];
   for (const item of due) {
-    const payload = reminderMessage(item.kind, item.streak);
+    const payload = reminderMessage(item.kind, item.streak, item.hasDailyMission ?? true);
     for (const sub of subsByPlayer.get(item.playerId) ?? []) {
       const result = await send(sub, payload);
       if (result === 'sent') sent++;

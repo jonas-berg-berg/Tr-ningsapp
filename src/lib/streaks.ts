@@ -39,14 +39,22 @@ export function dayStreak(
 
 /**
  * Veckostreak: veckor i rad bakåt som finns i `completedWeeks`.
- * Pågående vecka som inte är klar bryter inte streaken.
+ * Pågående vecka som inte är klar bryter inte streaken. Veckor i `skipWeeks`
+ * (veckor utan veckouppdrag) varken räknas eller bryter. `skipWeeks` måste
+ * vara ändlig, annars tar loopen aldrig slut; se `weeksWithoutMission`.
  */
-export function weekStreak(completedWeeks: Set<WeekKey>, today: ISODate): number {
+export function weekStreak(
+  completedWeeks: Set<WeekKey>,
+  today: ISODate,
+  skipWeeks: Set<WeekKey> = new Set(),
+): number {
   let cursor = today;
   if (!completedWeeks.has(isoWeekKey(cursor))) cursor = addDays(cursor, -7);
   let count = 0;
-  while (completedWeeks.has(isoWeekKey(cursor))) {
-    count += 1;
+  for (;;) {
+    const week = isoWeekKey(cursor);
+    if (completedWeeks.has(week)) count += 1;
+    else if (!skipWeeks.has(week)) break;
     cursor = addDays(cursor, -7);
   }
   return count;

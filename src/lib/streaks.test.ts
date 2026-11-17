@@ -70,6 +70,13 @@ describe('weekStreak', () => {
   it('tom mängd ger 0', () => {
     expect(weekStreak(new Set(), '2026-11-18')).toBe(0);
   });
+  it('veckor i skip-mängden varken räknas eller bryter', () => {
+    expect(weekStreak(new Set(['2026-W44', '2026-W46']), '2026-11-18', new Set(['2026-W45']))).toBe(2);
+    // Pågående vecka utan uppdrag bryter inte heller.
+    expect(weekStreak(new Set(['2026-W46']), '2026-11-18', new Set(['2026-W47']))).toBe(1);
+    // Pågående vecka hoppas, förra veckan saknas och är inte skip → 0.
+    expect(weekStreak(new Set(['2026-W45']), '2026-11-18', new Set())).toBe(0);
+  });
 });
 
 describe('longestStreak', () => {

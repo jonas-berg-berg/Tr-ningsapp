@@ -1,5 +1,8 @@
-import { addDays, isoWeekday, isoWeekKey } from '../dates';
-import { activeDates, canPlayerLog, completedWeeks } from '../logging';
+import { addDays, isoWeekKey } from '../dates';
+import {
+  activeDates, activeMission, canPlayerLog, completedWeeks, governingWeeklyMission, missionLoggableOn,
+  weeklyProgress, weeksWithoutMission,
+} from '../logging';
 import { dayStreak, weekStreak } from '../streaks';
 import type { CalendarEvent, ISODate, LogEntry, Mission, OtherOrgKind, TeamGoal } from '../types';
 
@@ -55,18 +58,6 @@ const timeFormat = new Intl.DateTimeFormat('sv-SE', {
   hourCycle: 'h23',
 });
 
-function isActiveOn(m: Mission, date: ISODate): boolean {
-  return m.activeFrom <= date && (m.activeTo === null || m.activeTo >= date);
-}
-
-/** Senast startade aktiva uppdraget av en viss sort. */
-function activeMission(missions: Mission[], kind: Mission['kind'], date: ISODate): Mission | null {
-  const candidates = missions
-    .filter((m) => m.kind === kind && isActiveOn(m, date))
-    .sort((a, b) => (a.activeFrom < b.activeFrom ? 1 : a.activeFrom > b.activeFrom ? -1 : a.id.localeCompare(b.id)));
-  return candidates[0] ?? null;
-}
-
 export function buildTodayView(input: TodayInput): TodayView {
   const { today, logs, missions, goalTotals } = input;
   const now = input.now ?? today;
@@ -104,22 +95,20 @@ export function buildTodayView(input: TodayInput): TodayView {
       }
     : null;
 
-  const weeklyMission = activeMission(missions, 'weekly', today);
+  // Veckans styrande uppdrag (samma regel som veckostreaken och påminnelsen).
+  const week = isoWeekKey(today);
+  const weeklyMission = governingWeeklyMission(missions, week);
   let weekly: TodayView['weekly'] = null;
   if (weeklyMission) {
-    const week = isoWeekKey(today);
-    const mine = logs.filter(
-      (l) => l.type === 'weekly' && l.missionId === weeklyMission.id && isoWeekKey(l.date) === week,
-    );
-    const doneKm = mine.reduce((sum, l) => sum + (l.km ?? 0), 0);
-    const todayLog = mine.find((l) => l.date === today);
+    const { doneKm, complete } = weeklyProgress(logs, weeklyMission, week);
+    const todayLog = logs.find((l) => l.type === 'weekly' && l.missionId === weeklyMission.id && l.date === today);
     weekly = {
       missionId: weeklyMission.id,
       name: weeklyMission.name,
       targetKm: weeklyMission.targetKm,
       doneKm,
-      complete: weeklyMission.targetKm === null ? mine.length > 0 : doneKm >= weeklyMission.targetKm,
-      availableToday: weeklyMission.weekdays.length === 0 || weeklyMission.weekdays.includes(isoWeekday(today)),
+      complete,
+      availableToday: missionLoggableOn(weeklyMission, today),
       todayLog: todayLog ? { id: todayLog.id, km: todayLog.km } : null,
     };
   }
@@ -130,7 +119,7 @@ export function buildTodayView(input: TodayInput): TodayView {
   return {
     date: today,
     dayStreak: streak.current,
-    weekStreak: weekStreak(completedWeeks(logs, missions), now),
+    weekStreak: weekStreak(completedWeeks(logs, missions), now, weeksWithoutMission(missions, now)),
     frozenThisWeek: streak.frozenDates.some((d) => isoWeekKey(d) === currentWeek),
     events,
     otherOrg: { checked: otherLog !== undefined, kind: otherLog?.otherKind ?? null, logId: otherLog?.id ?? null },
