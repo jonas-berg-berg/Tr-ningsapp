@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMonthStats } from './stats';
+import { buildMonthStats, parseMonth, shiftMonth } from './stats';
 import type { LogEntry } from '../types';
 
 function log(p: Partial<LogEntry>): LogEntry {
@@ -110,5 +110,25 @@ describe('buildMonthStats', () => {
     expect(s.totalKm).toBe(0);
     expect(Object.values(s.countsByType).every((n) => n === 0)).toBe(true);
     expect(s.days.every((d) => !d.active && !d.frozen)).toBe(true);
+  });
+});
+
+describe('parseMonth', () => {
+  it('giltig månad behålls', () => {
+    expect(parseMonth('2026-10', '2026-11-17')).toBe('2026-10');
+  });
+  it('saknad, ogiltig eller framtida månad ger idag', () => {
+    expect(parseMonth(undefined, '2026-11-17')).toBe('2026-11');
+    expect(parseMonth('2026-13', '2026-11-17')).toBe('2026-11');
+    expect(parseMonth(['2026-10'], '2026-11-17')).toBe('2026-11');
+    expect(parseMonth('2026-12', '2026-11-17')).toBe('2026-11');
+  });
+});
+
+describe('shiftMonth', () => {
+  it('flyttar över årsskiftet', () => {
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01');
+    expect(shiftMonth('2027-01', -1)).toBe('2026-12');
+    expect(shiftMonth('2026-11', -1)).toBe('2026-10');
   });
 });

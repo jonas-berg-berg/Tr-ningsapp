@@ -57,3 +57,21 @@ export function buildMonthStats(logs: LogEntry[], month: string, today: ISODate)
 
   return { days, longestStreak: longestStreak(active), countsByType, totalKm };
 }
+
+/** 'YYYY-MM' från en sökparameter. Saknad, ogiltig eller framtida månad ger dagens månad. */
+export function parseMonth(raw: unknown, today: ISODate): string {
+  const current = today.slice(0, 7);
+  if (typeof raw !== 'string') return current;
+  const match = MONTH_RE.exec(raw);
+  if (!match) return current;
+  const m = Number(match[2]);
+  if (m < 1 || m > 12 || raw > current) return current;
+  return raw;
+}
+
+/** Flyttar en månad 'YYYY-MM' delta månader framåt eller bakåt. */
+export function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number);
+  const index = y * 12 + (m - 1) + delta;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}

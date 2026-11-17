@@ -51,7 +51,7 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle();
+  const { data: profile } = await supabase.from('profiles').select('display_name, role').eq('id', user.id).maybeSingle();
 
   const now = toStockholmDate(new Date());
   const viewDate = yesterdayMode ? addDays(now, -1) : now;
@@ -112,6 +112,17 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
           ))}
         </section>
       )}
+
+      <nav className="flex flex-col gap-2" aria-label="Mer">
+        <Link href="/statistik" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">
+          Min statistik <span aria-hidden>›</span>
+        </Link>
+        {profile?.role === 'coach' && (
+          <Link href="/tranare" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">
+            Tränarvy <span aria-hidden>›</span>
+          </Link>
+        )}
+      </nav>
     </main>
   );
 }
