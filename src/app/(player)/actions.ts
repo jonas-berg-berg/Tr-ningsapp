@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { GENERIC_ERROR, LOG_REJECTED, logInsertResult, parseKm, type ActionResult } from '@/lib/actions/log-result';
 import { toStockholmDate } from '@/lib/dates';
-import { canPlayerLog } from '@/lib/logging';
+import { canPlayerLog, weeklyAllowedOn } from '@/lib/logging';
 import { createClient } from '@/lib/supabase/server';
 import type { ISODate, OtherOrgKind } from '@/lib/types';
 
@@ -82,6 +82,20 @@ export async function logWeekly(date: ISODate, missionId: string, km: number): P
   if (parsedKm === null) return { ok: false, error: 'Ange km som ett tal större än 0 (högst 100).' };
   const dateError = checkDate(date);
   if (dateError) return { ok: false, error: dateError };
+
+  // RLS kontrollerar inte veckodagarna, så det görs här.
+  const supabase = await createClient();
+  const { data: mission } = await supabase
+    .from('missions')
+    .select('kind, weekdays')
+    .eq('id', missionId)
+    .maybeSingle();
+  if (!mission || mission.kind !== 'weekly') return { ok: false, error: LOG_REJECTED };
+  const weekdays = ((mission.weekdays as number[] | null) ?? []).map(Number);
+  if (!weeklyAllowedOn(weekdays, date)) {
+    return { ok: false, error: 'Veckouppdraget går inte att logga den här veckodagen.' };
+  }
+
   return insertLog({ date, type: 'weekly', mission_id: missionId, km: parsedKm });
 }
 

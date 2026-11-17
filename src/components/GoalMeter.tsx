@@ -10,6 +10,8 @@ export function GoalMeter({ goal }: { goal: Goal }) {
   const share = goal.target > 0 ? Math.min(goal.total / goal.target, 1) : 0;
   const pct = `${(share * 100).toFixed(1)}%`;
   const left = Math.max(goal.target - goal.total, 0);
+  const unit = goal.metric === 'km' ? ' km' : '';
+  const remaining = left > 0 ? `kvar: ${fmt(left)}${unit}` : 'Klart!';
 
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
@@ -31,8 +33,9 @@ export function GoalMeter({ goal }: { goal: Goal }) {
           </div>
           <p className="mt-2 text-sm">
             {fmt(goal.total)} / {fmt(goal.target)} km
-            <span className="text-zinc-400"> · {fmt(share * JOURNEY_KM)} av 45 mil på vägen</span>
+            <span className="text-zinc-400"> · {remaining}</span>
           </p>
+          <p className="text-xs text-zinc-400">{fmt(share * JOURNEY_KM)} av 45 mil på vägen</p>
         </div>
       ) : (
         <div>
@@ -47,7 +50,7 @@ export function GoalMeter({ goal }: { goal: Goal }) {
           </div>
           <p className="mt-2 text-sm">
             {fmt(goal.total)} / {fmt(goal.target)}
-            <span className="text-zinc-400"> · {left > 0 ? `${fmt(left)} kvar` : 'Klart!'}</span>
+            <span className="text-zinc-400"> · {remaining}</span>
           </p>
         </div>
       )}

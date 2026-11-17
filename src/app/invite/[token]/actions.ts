@@ -77,7 +77,8 @@ export async function redeemInvite(token: string, _prev: InviteState, formData: 
     role: invite.role,
   });
   if (profileError) {
-    await admin.auth.admin.deleteUser(created.user.id);
+    const { error: deleteError } = await admin.auth.admin.deleteUser(created.user.id);
+    if (deleteError) console.error('Kunde inte ta bort kontot efter misslyckad profil', { code: deleteError.code });
     await release();
     return { error: profileError.code === '23505' ? USERNAME_TAKEN : GENERIC };
   }
