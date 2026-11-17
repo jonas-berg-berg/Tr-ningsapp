@@ -1,9 +1,14 @@
-import { addDays, isoWeekKey, weekDates } from './dates';
+import { addDays, isoWeekday, isoWeekKey, weekDates } from './dates';
 import type { ISODate, LogEntry, Mission, WeekKey } from './types';
 
 /** En spelare får logga idag och igår, inget annat. */
 export function canPlayerLog(date: ISODate, today: ISODate): boolean {
   return date === today || date === addDays(today, -1);
+}
+
+/** Veckouppdraget gäller datumets veckodag. Tom lista betyder alla dagar. */
+export function weeklyAllowedOn(weekdays: number[], date: ISODate): boolean {
+  return weekdays.length === 0 || weekdays.includes(isoWeekday(date));
 }
 
 /** Alla loggtyper (även weekly) gör sin dag aktiv. */

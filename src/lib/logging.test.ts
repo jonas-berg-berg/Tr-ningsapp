@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeDates, canPlayerLog, completedWeeks } from './logging';
+import { activeDates, canPlayerLog, completedWeeks, weeklyAllowedOn } from './logging';
 import type { LogEntry, Mission } from './types';
 
 function log(p: Partial<LogEntry>): LogEntry {
@@ -89,5 +89,16 @@ describe('completedWeeks', () => {
     const ended = { ...weekly, activeTo: '2026-11-15' };
     const logs = [log({ date: '2026-11-21', type: 'weekly', missionId: 'm1', km: 9 })];
     expect(completedWeeks(logs, [ended]).size).toBe(0);
+  });
+});
+
+describe('weeklyAllowedOn', () => {
+  it('tom lista betyder alla dagar', () => {
+    expect(weeklyAllowedOn([], '2026-11-18')).toBe(true);
+  });
+  it('lör–sön: lördag och söndag tillåts, onsdag inte', () => {
+    expect(weeklyAllowedOn([6, 7], '2026-11-21')).toBe(true);
+    expect(weeklyAllowedOn([6, 7], '2026-11-22')).toBe(true);
+    expect(weeklyAllowedOn([6, 7], '2026-11-18')).toBe(false);
   });
 });

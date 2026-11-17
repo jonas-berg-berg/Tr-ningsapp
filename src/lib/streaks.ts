@@ -51,3 +51,25 @@ export function weekStreak(completedWeeks: Set<WeekKey>, today: ISODate): number
   }
   return count;
 }
+
+/**
+ * Alla streaks i historiken, en per dag där en streak tar slut (aktiv dag vars
+ * nästa dag inte är aktiv). Varje streak räknas med `dayStreak` från sin sista
+ * dag, så frysregeln är exakt densamma. En streak som slutar på dag d+1 är alltid
+ * en längre än den som slutar på d, så bara slutdagarna behöver räknas.
+ */
+export function historicStreaks(
+  activeDates: Set<ISODate>,
+): { end: ISODate; current: number; frozenDates: ISODate[] }[] {
+  const result: { end: ISODate; current: number; frozenDates: ISODate[] }[] = [];
+  for (const day of activeDates) {
+    if (activeDates.has(addDays(day, 1))) continue;
+    result.push({ end: day, ...dayStreak(activeDates, day) });
+  }
+  return result.sort((a, b) => (a.end < b.end ? -1 : a.end > b.end ? 1 : 0));
+}
+
+/** Längsta dagstreaken i hela historiken, med samma frysregel som `dayStreak`. */
+export function longestStreak(activeDates: Set<ISODate>): number {
+  return historicStreaks(activeDates).reduce((max, s) => Math.max(max, s.current), 0);
+}
