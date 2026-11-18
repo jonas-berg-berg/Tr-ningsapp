@@ -18,7 +18,11 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     email: usernameToEmail(username),
     password,
   });
-  if (error) return { error: LOGIN_FAILED };
+  if (error) {
+    // Bara felkod och status loggas – aldrig användarnamn eller lösenord.
+    console.error('login misslyckades', { code: error.code, status: error.status });
+    return { error: LOGIN_FAILED };
+  }
 
   redirect('/');
 }
