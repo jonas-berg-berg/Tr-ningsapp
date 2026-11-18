@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { InviteForm } from './InviteForm';
 import { findOpenInvite, INVALID_INVITE } from './invite';
@@ -15,6 +16,8 @@ export default function InvitePage({ params }: PageProps<'/invite/[token]'>) {
 
 async function InviteContent({ params }: Pick<PageProps<'/invite/[token]'>, 'params'>) {
   const { token } = await params;
+  // Inbjudan läses per anrop (tidsgränsen räknas från "nu"), aldrig vid förrendering.
+  await connection();
   const invite = await findOpenInvite(token);
 
   return (
