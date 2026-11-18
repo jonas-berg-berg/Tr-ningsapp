@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { MonthStats } from '@/components/MonthStats';
 import { ActionForm } from '@/components/coach/ActionForm';
+import { DayPicker } from '@/components/coach/DayPicker';
 import { isISODate, UUID_RE } from '@/lib/actions/form-state';
 import { requireCoachPage } from '@/lib/auth/require-coach';
 import { toStockholmDate } from '@/lib/dates';
@@ -127,18 +128,10 @@ async function PlayerDetail({ params, searchParams }: PageProps<'/tranare/spelar
 
       <section className="flex flex-col gap-3 rounded-2xl bg-zinc-900 p-4">
         <h2 className="font-bold">Lägg till pass</h2>
-        <form method="get" action={basePath} className="flex items-end gap-2">
-          <input type="hidden" name="manad" value={month} />
-          <label className="flex flex-col gap-1 text-sm">
-            Datum
-            <input type="date" name="datum" defaultValue={date} max={today} className={input} />
-          </label>
-          <button type="submit" className="h-11 rounded-xl bg-zinc-800 px-4 font-semibold">
-            Visa dagen
-          </button>
-        </form>
+        <DayPicker basePath={basePath} date={date} today={today} className={input} />
 
-        <ActionForm action={addLog} submitLabel={`Lägg till för ${date}`}>
+        {/* key: nytt formulär (och ingen gammal kvittens) när dagen byts. */}
+        <ActionForm key={date} action={addLog} submitLabel={`Lägg till för ${date}`}>
           <input type="hidden" name="player_id" value={id} />
           <input type="hidden" name="date" value={date} />
           <label className="flex flex-col gap-1 text-sm">
