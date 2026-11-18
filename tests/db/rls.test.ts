@@ -11,7 +11,8 @@ const TEST_DB = 'traningsappen_test';
 
 const ROOT = join(__dirname, '..', '..');
 const SHIM = join(ROOT, 'supabase', 'tests', 'shim.sql');
-const MIGRATION = join(ROOT, 'supabase', 'migrations', '0001_init.sql');
+// 0002_cron.sql kräver Supabase och laddas aldrig här.
+const MIGRATIONS = ['0001_init.sql', '0003_jersey_number.sql'].map((f) => join(ROOT, 'supabase', 'migrations', f));
 
 const A = '00000000-0000-0000-0000-00000000000a';
 const B = '00000000-0000-0000-0000-00000000000b';
@@ -85,7 +86,7 @@ beforeAll(async () => {
   db = admin(TEST_DB);
   await db.connect();
   await db.query(readFileSync(SHIM, 'utf8'));
-  await db.query(readFileSync(MIGRATION, 'utf8'));
+  for (const m of MIGRATIONS) await db.query(readFileSync(m, 'utf8'));
 
   // Seed som superuser (förbi RLS).
   await db.query(
@@ -306,6 +307,16 @@ describe('profiles', () => {
     await as(COACH, async (c) => {
       expect(await count(c, 'select count(*) n from profiles')).toBe(3);
       expect((await c.query('select is_coach() ok')).rows[0].ok).toBe(true);
+    });
+  });
+
+  it('tränaren sätter tröjnummer, spelaren kan inte ändra sitt eget', async () => {
+    await as(COACH, async (c) => {
+      expect((await c.query('update profiles set jersey_number = 17 where id = $1', [A])).rowCount).toBe(1);
+      expect(await sqlState(c.query('update profiles set jersey_number = 100 where id = $1', [A]))).toBe('23514');
+    });
+    await as(A, async (c) => {
+      expect((await c.query('update profiles set jersey_number = 9 where id = $1', [A])).rowCount).toBe(0);
     });
   });
 

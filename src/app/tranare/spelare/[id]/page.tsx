@@ -10,7 +10,7 @@ import { toMission } from '@/lib/supabase/rows';
 import type { LogType, Mission, OtherOrgKind } from '@/lib/types';
 import { buildMonthStats, parseMonth, shiftMonth } from '@/lib/views/stats';
 import { loadLogs } from '../../data';
-import { addLog, deleteLog, setPlayerPassword } from './actions';
+import { addLog, deleteLog, setJerseyNumber, setPlayerPassword } from './actions';
 
 const TYPE_LABELS: Record<LogType, string> = {
   training: 'Lagträning',
@@ -49,7 +49,7 @@ async function PlayerDetail({ params, searchParams }: PageProps<'/tranare/spelar
   const date = typeof datum === 'string' && isISODate(datum) && datum <= today ? datum : today;
 
   const [profile, logs, logRows, missions, events] = await Promise.all([
-    supabase.from('profiles').select('display_name, username').eq('id', id).maybeSingle(),
+    supabase.from('profiles').select('display_name, username, jersey_number').eq('id', id).maybeSingle(),
     loadLogs(supabase, id),
     // Månadens loggar med händelsetitel, för listan.
     supabase
@@ -191,6 +191,25 @@ async function PlayerDetail({ params, searchParams }: PageProps<'/tranare/spelar
               <input name="km" inputMode="decimal" placeholder="t.ex. 4,5" className={input} />
             </label>
           )}
+        </ActionForm>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-2xl bg-zinc-900 p-4">
+        <h2 className="font-bold">Tröjnummer</h2>
+        <p className="text-sm text-zinc-400">Visas stort på {name}s spelarkort. Lämna tomt för att ta bort.</p>
+        <ActionForm action={setJerseyNumber} submitLabel="Spara nummer" pendingLabel="Sparar…" className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="player_id" value={id} />
+          <label className="flex flex-col gap-1 text-sm">
+            Nummer (0–99)
+            <input
+              name="jersey_number"
+              inputMode="numeric"
+              pattern="[0-9]{0,2}"
+              maxLength={2}
+              defaultValue={(profile.data.jersey_number as number | null) ?? ''}
+              className={`${input} w-24`}
+            />
+          </label>
         </ActionForm>
       </section>
 

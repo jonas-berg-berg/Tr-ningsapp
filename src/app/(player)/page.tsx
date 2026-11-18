@@ -6,10 +6,12 @@ import { GoalMeter } from '@/components/GoalMeter';
 import { InstallGuide } from '@/components/InstallGuide';
 import { LogoutButton } from '@/components/LogoutButton';
 import { NotMember } from '@/components/NotMember';
+import { PlayerCard } from '@/components/PlayerCard';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { StreakBadge } from '@/components/StreakBadge';
 import { TodayCard } from '@/components/TodayCard';
 import { WeeklyCard } from '@/components/WeeklyCard';
+import { buildCardStats } from '@/lib/card';
 import { addDays, toStockholmDate } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
 import { buildTodayView } from '@/lib/views/today';
@@ -58,7 +60,8 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('display_name, role')
+    // '*' i stället för en kolumnlista: startsidan fungerar även innan 0003 (jersey_number) är körd.
+    .select('*')
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) throw new Error(`Kunde inte läsa profilen: ${profileError.message}`);
@@ -69,6 +72,9 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   const viewDate = yesterdayMode ? addDays(now, -1) : now;
   const data = await loadTodayData(supabase, user.id, viewDate);
   const view = buildTodayView({ today: viewDate, now, ...data });
+  // Kortet visar alltid läget idag, även i igår-läget.
+  const card = buildCardStats(data.logs, now);
+  const jerseyNumber = typeof profile.jersey_number === 'number' ? profile.jersey_number : null;
   const weeklyDays = view.weekly ? (data.missions.find((m) => m.id === view.weekly!.missionId)?.weekdays ?? []) : [];
 
   const tab = (active: boolean) =>
@@ -90,6 +96,8 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
           <StreakBadge icon="📅" value={view.weekStreak} unit={view.weekStreak === 1 ? 'vecka' : 'veckor'} />
         </div>
       </header>
+
+      <PlayerCard name={profile.display_name} jerseyNumber={jerseyNumber} stats={card} />
 
       <nav className="flex gap-1 rounded-xl bg-zinc-900 p-1" aria-label="Välj dag">
         <Link href="/" className={tab(!yesterdayMode)} aria-current={!yesterdayMode ? 'page' : undefined}>

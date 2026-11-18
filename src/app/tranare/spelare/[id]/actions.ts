@@ -6,6 +6,7 @@ import { field, isISODate, UUID_RE, type FormState } from '@/lib/actions/form-st
 import { passwordResetError } from '@/lib/auth/password-reset';
 import { getCoach, NOT_COACH } from '@/lib/auth/require-coach';
 import { toStockholmDate } from '@/lib/dates';
+import { parseJerseyNumber } from '@/lib/jersey';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { OtherOrgKind } from '@/lib/types';
 
@@ -131,4 +132,29 @@ export async function setPlayerPassword(_prev: FormState, formData: FormData): P
     return { error: GENERIC };
   }
   return { ok: 'Lösenordet är bytt. Berätta det nya lösenordet för spelaren.' };
+}
+
+/** Tränaren sätter eller tar bort spelarens tröjnummer (visas på spelarkortet). */
+export async function setJerseyNumber(_prev: FormState, formData: FormData): Promise<FormState> {
+  const coach = await getCoach();
+  if (!coach) return { error: NOT_COACH };
+
+  const playerId = field(formData, 'player_id');
+  if (!UUID_RE.test(playerId)) return { error: GENERIC };
+  const jersey = parseJerseyNumber(field(formData, 'jersey_number'));
+  if (jersey === undefined) return { error: 'Ange ett nummer mellan 0 och 99, eller lämna tomt.' };
+
+  const { data, error } = await coach.supabase
+    .from('profiles')
+    .update({ jersey_number: jersey })
+    .eq('id', playerId)
+    .select('id');
+  if (error) {
+    console.error('Kunde inte spara tröjnummer', { code: error.code });
+    return { error: GENERIC };
+  }
+  if (!data || data.length === 0) return { error: 'Spelaren finns inte längre.' };
+  revalidatePath(`/tranare/spelare/${playerId}`);
+  revalidatePath('/');
+  return { ok: jersey === null ? 'Numret är borttaget.' : `Nummer ${jersey} är sparat.` };
 }
