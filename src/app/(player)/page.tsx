@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { EnableNotifications } from '@/components/EnableNotifications';
-import { GoalMeter } from '@/components/GoalMeter';
 import { InstallGuide } from '@/components/InstallGuide';
+import { Lagkemi } from '@/components/Lagkemi';
 import { LogoutButton } from '@/components/LogoutButton';
 import { NotMember } from '@/components/NotMember';
 import { PlayerCard } from '@/components/PlayerCard';
@@ -16,6 +16,7 @@ import { addDays, toStockholmDate } from '@/lib/dates';
 import { createClient } from '@/lib/supabase/server';
 import { buildTodayView } from '@/lib/views/today';
 import { loadTodayData } from './data';
+import { loadTeamCards } from './team';
 
 const dayLabel = new Intl.DateTimeFormat('sv-SE', {
   weekday: 'long',
@@ -70,7 +71,14 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
 
   const now = toStockholmDate(new Date());
   const viewDate = yesterdayMode ? addDays(now, -1) : now;
-  const data = await loadTodayData(supabase, user.id, viewDate);
+  const [data, team] = await Promise.all([
+    loadTodayData(supabase, user.id, viewDate),
+    loadTeamCards(user.id, now).catch((e: unknown) => {
+      // Lagkemin får aldrig stoppa startsidan (t.ex. om SUPABASE_SERVICE_ROLE_KEY saknas).
+      console.error('Kunde inte läsa lagkemin', { message: e instanceof Error ? e.message : String(e) });
+      return [];
+    }),
+  ]);
   const view = buildTodayView({ today: viewDate, now, ...data });
   // Kortet visar alltid läget idag, även i igår-läget.
   const card = buildCardStats(data.logs, now);
@@ -78,14 +86,15 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   const weeklyDays = view.weekly ? (data.missions.find((m) => m.id === view.weekly!.missionId)?.weekdays ?? []) : [];
 
   const tab = (active: boolean) =>
-    `flex h-10 flex-1 items-center justify-center rounded-lg text-sm font-bold ${
-      active ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+    `flex h-10 flex-1 items-center justify-center rounded-lg font-display text-base font-extrabold tracking-wider uppercase ${
+      active ? 'bg-club text-white' : 'text-zinc-400'
     }`;
+  const heading = 'font-display text-[15px] font-extrabold tracking-[0.14em] text-zinc-400 uppercase';
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-32">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-black tracking-tight">Hej {profile.display_name}!</h1>
+        <h1 className="font-display text-3xl font-black tracking-wide uppercase">Hej {profile.display_name}!</h1>
         <div className="flex gap-2">
           <StreakBadge
             icon="🔥"
@@ -109,7 +118,7 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
       </nav>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+        <h2 className={heading}>
           {yesterdayMode ? 'Igår' : 'Idag'} – {formatDay(view.date)}
         </h2>
         <TodayCard date={view.date} events={view.events} otherOrg={view.otherOrg} extra={view.extra} />
@@ -120,18 +129,12 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
 
       {view.weekly && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Denna vecka</h2>
+          <h2 className={heading}>Denna vecka</h2>
           <WeeklyCard date={view.date} weekly={view.weekly} weekdays={weeklyDays} />
         </section>
       )}
 
-      {view.goals.length > 0 && (
-        <section className="flex flex-col gap-3">
-          {view.goals.map((g) => (
-            <GoalMeter key={g.id} goal={g} />
-          ))}
-        </section>
-      )}
+      <Lagkemi cards={team} goals={view.goals} />
 
       <RegisterServiceWorker />
       <InstallGuide />

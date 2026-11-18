@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDays } from './dates';
-import { buildCardStats, partScore, ratingFromParts, tierForRating } from './card';
+import { buildCardStats, partScore, ratingFromParts, teamAverage, teamCards, tierForRating } from './card';
 import type { ISODate, LogEntry } from './types';
 
 const TODAY = '2026-11-18';
@@ -80,5 +80,25 @@ describe('buildCardStats', () => {
     const s = buildCardStats(daily(200), TODAY);
     expect(s.tier).toBe('ikon');
     expect(s.next).toBeNull();
+  });
+});
+
+describe('teamCards', () => {
+  it('ger alla spelare ett betyg, högst först, och markerar mig', () => {
+    const logs = [...daily(20).map((l) => ({ ...l, playerId: 'a' })), ...daily(2).map((l) => ({ ...l, playerId: 'me' }))];
+    const cards = teamCards(logs, ['me', 'a', 'tom'], 'me', TODAY);
+    expect(cards.map((c) => c.isMe)).toEqual([false, true, false]);
+    expect(cards[0].rating).toBeGreaterThan(cards[1].rating);
+    expect(cards[2]).toEqual({ rating: 40, tier: 'brons', isMe: false });
+  });
+
+  it('ignorerar loggar från den som inte är spelare (t.ex. tränaren)', () => {
+    const cards = teamCards(daily(30).map((l) => ({ ...l, playerId: 'coach' })), ['a'], 'a', TODAY);
+    expect(cards).toEqual([{ rating: 40, tier: 'brons', isMe: true }]);
+  });
+
+  it('snittet avrundas och är 0 för ett tomt lag', () => {
+    expect(teamAverage([])).toBe(0);
+    expect(teamAverage([{ rating: 70, tier: 'guld', isMe: false }, { rating: 75, tier: 'guld', isMe: true }])).toBe(73);
   });
 });

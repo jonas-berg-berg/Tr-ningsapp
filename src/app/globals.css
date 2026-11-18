@@ -6,6 +6,15 @@
   color-scheme: dark;
 }
 
+/* Klubbens färger och rubriktypsnittet (Barlow Condensed laddas lokalt via @fontsource i PlayerCard). */
+@theme {
+  --font-display: "Barlow Condensed", system-ui, sans-serif;
+  --color-club: #e30613;
+  --color-club-hot: #ff2d3d;
+  --color-club-deep: #7a0710;
+  --color-gold: #f2c14e;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
