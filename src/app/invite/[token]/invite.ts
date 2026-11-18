@@ -14,12 +14,16 @@ export function isValidToken(token: string): boolean {
 export async function findOpenInvite(token: string): Promise<{ displayName: string } | null> {
   if (!isValidToken(token)) return null;
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from('invites')
     .select('display_name')
     .eq('token', token)
     .is('used_at', null)
     .gte('created_at', inviteCutoff(new Date()))
     .maybeSingle();
+  if (error) {
+    // Bara felkoden loggas – aldrig token eller nycklar.
+    console.error('findOpenInvite misslyckades', { code: error.code });
+  }
   return data ? { displayName: data.display_name as string } : null;
 }

@@ -185,6 +185,13 @@ grant execute on function public.is_member() to authenticated, service_role;
 revoke all on function public.team_goal_total(uuid) from public, anon, service_role;
 grant execute on function public.team_goal_total(uuid) to authenticated;
 
+-- Tabellrättigheter. Nyare Supabase-projekt ger inte API-rollerna åtkomst till
+-- nya tabeller automatiskt. RLS nedan styr fortfarande vilka rader som syns.
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated, service_role;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated, service_role;
+
 -- ---------------------------------------------------------------------------
 -- Row Level Security
 -- ---------------------------------------------------------------------------
