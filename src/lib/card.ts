@@ -93,3 +93,35 @@ export function buildCardStats(logs: LogEntry[], today: ISODate): CardStats {
     next: nextTier ? { tier: nextTier.tier, pointsLeft: nextTier.min - rating } : null,
   };
 }
+
+export interface TeamCard {
+  rating: number;
+  tier: Tier;
+  isMe: boolean;
+}
+
+/**
+ * Lagkemi: varje spelares betyg, högst först. Bara siffror lämnar servern,
+ * inga loggar eller namn. Spelare utan loggar får lägsta betyget.
+ */
+export function teamCards(
+  logs: Pick<LogEntry, 'playerId' | 'date'>[],
+  playerIds: string[],
+  me: string,
+  today: ISODate,
+): TeamCard[] {
+  const byPlayer = new Map<string, LogEntry[]>(playerIds.map((id) => [id, []]));
+  for (const l of logs) byPlayer.get(l.playerId)?.push(l as LogEntry);
+  return playerIds
+    .map((id) => {
+      const s = buildCardStats(byPlayer.get(id)!, today);
+      return { rating: s.rating, tier: s.tier, isMe: id === me };
+    })
+    .sort((a, b) => b.rating - a.rating || Number(b.isMe) - Number(a.isMe));
+}
+
+/** Lagets snittbetyg, avrundat. 0 om laget är tomt. */
+export function teamAverage(cards: TeamCard[]): number {
+  if (cards.length === 0) return 0;
+  return Math.round(cards.reduce((sum, c) => sum + c.rating, 0) / cards.length);
+}

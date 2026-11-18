@@ -70,7 +70,7 @@ export function WeeklyCard({
           {weekly.name}
           {days && <span className="font-normal text-zinc-400"> ({days})</span>}
         </p>
-        <p className={`shrink-0 text-sm font-bold ${weekly.complete ? 'text-lime-400' : 'text-zinc-400'}`}>{status}</p>
+        <p className={`shrink-0 text-sm font-bold ${weekly.complete ? 'text-gold' : 'text-zinc-400'}`}>{status}</p>
       </div>
 
       {weekly.todayLog ? (
@@ -96,12 +96,12 @@ export function WeeklyCard({
             placeholder="km"
             value={km}
             onChange={(e) => setKm(e.target.value)}
-            className="h-12 w-24 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-lg outline-none focus:border-lime-400"
+            className="h-12 w-24 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-lg outline-none focus:border-club"
           />
           <button
             type="submit"
             disabled={pending}
-            className="h-12 flex-1 rounded-xl bg-lime-400 font-bold text-zinc-950 disabled:opacity-60"
+            className="h-12 flex-1 rounded-xl bg-club font-display text-lg font-extrabold uppercase tracking-wide text-white disabled:opacity-60"
           >
             {pending ? 'Sparar…' : 'Logga löpning'}
           </button>
