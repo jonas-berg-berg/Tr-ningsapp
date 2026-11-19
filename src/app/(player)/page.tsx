@@ -92,7 +92,7 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   const heading = 'font-display text-[15px] font-extrabold tracking-[0.14em] text-zinc-400 uppercase';
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-32">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pt-6 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-black tracking-wide uppercase">Hej {profile.display_name}!</h1>
         <div className="flex gap-2">
@@ -117,11 +117,20 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
         </Link>
       </nav>
 
-      <section className="flex flex-col gap-3">
-        <h2 className={heading}>
-          {yesterdayMode ? 'Igår' : 'Idag'} – {formatDay(view.date)}
-        </h2>
-        <TodayCard date={view.date} events={view.events} otherOrg={view.otherOrg} extra={view.extra} />
+      {/* Dagens pass är det man ska göra något med, så det får klubbens röda ram och sticker ut. */}
+      <section
+        aria-labelledby="dagens-pass"
+        className="flex flex-col gap-3 rounded-3xl border-2 border-club bg-gradient-to-b from-club/25 via-club/10 to-zinc-950 p-4 shadow-[0_0_32px_rgb(227_6_19/0.25)]"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="dagens-pass" className="font-display text-2xl font-black tracking-wide text-white uppercase">
+            {yesterdayMode ? 'Gårdagens pass' : 'Dagens pass'}
+          </h2>
+          <span className="font-display text-sm font-bold tracking-wider text-red-200 uppercase">
+            {formatDay(view.date)}
+          </span>
+        </div>
+        <TodayCard date={view.date} events={view.events} otherOrg={view.otherOrg} extras={view.extras} />
         {view.frozenThisWeek && (
           <p className="text-xs text-sky-300">❄️ Veckans frysdag är använd – missa inte en dag till.</p>
         )}

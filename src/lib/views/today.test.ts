@@ -88,14 +88,15 @@ describe('buildTodayView – händelser', () => {
 describe('buildTodayView – extrapass', () => {
   it('är framhävt utan organiserad logg och inte med en training-logg', () => {
     const without = buildTodayView(input({ missions: [daily] }));
-    expect(without.extra).toMatchObject({ missionId: 'd1', name: 'Splits 3×10', checked: false, emphasized: true });
+    expect(without.extras).toHaveLength(1);
+    expect(without.extras[0]).toMatchObject({ missionId: 'd1', name: 'Splits 3×10', checked: false, emphasized: true });
 
     const withTraining = buildTodayView(input({
       missions: [daily],
       events: [ev({ uid: 't1' })],
       logs: [log({ type: 'training', eventUid: 't1' })],
     }));
-    expect(withTraining.extra?.emphasized).toBe(false);
+    expect(withTraining.extras[0].emphasized).toBe(false);
   });
 
   it('annan organiserad träning tar också bort framhävningen och syns i otherOrg', () => {
@@ -103,19 +104,37 @@ describe('buildTodayView – extrapass', () => {
       missions: [daily],
       logs: [log({ type: 'other_org', otherKind: 'fotboll' })],
     }));
-    expect(view.extra?.emphasized).toBe(false);
+    expect(view.extras[0].emphasized).toBe(false);
     expect(view.otherOrg).toMatchObject({ checked: true, kind: 'fotboll' });
   });
 
   it('checked när extrapasset är loggat idag', () => {
     const view = buildTodayView(input({ missions: [daily], logs: [log({ type: 'extra', missionId: 'd1' })] }));
-    expect(view.extra?.checked).toBe(true);
+    expect(view.extras[0].checked).toBe(true);
   });
 
-  it('är null utan aktivt dagligt uppdrag', () => {
-    expect(buildTodayView(input({})).extra).toBeNull();
-    expect(buildTodayView(input({ missions: [{ ...daily, activeTo: '2026-11-16' }] })).extra).toBeNull();
-    expect(buildTodayView(input({ missions: [{ ...daily, activeFrom: '2026-11-18' }] })).extra).toBeNull();
+  it('är tom utan aktivt dagligt uppdrag', () => {
+    expect(buildTodayView(input({})).extras).toEqual([]);
+    expect(buildTodayView(input({ missions: [{ ...daily, activeTo: '2026-11-16' }] })).extras).toEqual([]);
+    expect(buildTodayView(input({ missions: [{ ...daily, activeFrom: '2026-11-18' }] })).extras).toEqual([]);
+  });
+
+  const mini: Mission = { ...daily, id: 'd2', name: 'Minipass', activeFrom: '2026-11-10' };
+
+  it('visar alla aktiva dagsuppdrag att välja mellan, senast startade först', () => {
+    const view = buildTodayView(input({ missions: [daily, mini] }));
+    expect(view.extras.map((x) => [x.missionId, x.checked])).toEqual([['d2', false], ['d1', false]]);
+  });
+
+  it('bara det loggade extrapasset är checked', () => {
+    const view = buildTodayView(input({ missions: [daily, mini], logs: [log({ id: 'L9', type: 'extra', missionId: 'd1' })] }));
+    expect(view.extras.map((x) => [x.missionId, x.checked, x.logId])).toEqual([['d2', false, null], ['d1', true, 'L9']]);
+  });
+
+  it('visar dagens loggade extrapass även om uppdraget har slutat', () => {
+    const ended = { ...mini, activeTo: '2026-11-16' };
+    const view = buildTodayView(input({ missions: [daily, ended], logs: [log({ type: 'extra', missionId: 'd2' })] }));
+    expect(view.extras.map((x) => [x.missionId, x.checked])).toEqual([['d2', true], ['d1', false]]);
   });
 });
 
@@ -250,7 +269,7 @@ describe('buildTodayView – logg-id för ångra', () => {
     }));
     expect(view.events[0].logId).toBe('L1');
     expect(view.otherOrg.logId).toBe('L2');
-    expect(view.extra?.logId).toBe('L3');
+    expect(view.extras[0].logId).toBe('L3');
     expect(view.weekly?.todayLog).toEqual({ id: 'L4', km: 4 });
   });
 
@@ -258,7 +277,7 @@ describe('buildTodayView – logg-id för ångra', () => {
     const view = buildTodayView(input({ missions: [daily, weekly], events: [ev({ uid: 't1' })] }));
     expect(view.events[0].logId).toBeNull();
     expect(view.otherOrg.logId).toBeNull();
-    expect(view.extra?.logId).toBeNull();
+    expect(view.extras.every((x) => x.logId === null)).toBe(true);
     expect(view.weekly?.todayLog).toBeNull();
   });
 });
