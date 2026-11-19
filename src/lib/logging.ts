@@ -31,9 +31,14 @@ function latestFirst(a: Mission, b: Mission): number {
   return a.activeFrom < b.activeFrom ? 1 : a.activeFrom > b.activeFrom ? -1 : a.id.localeCompare(b.id);
 }
 
+/** Alla aktiva uppdrag av en viss sort på datumet, senast startade först. */
+export function activeMissions(missions: Mission[], kind: Mission['kind'], date: ISODate): Mission[] {
+  return missions.filter((m) => m.kind === kind && missionActiveOn(m, date)).sort(latestFirst);
+}
+
 /** Senast startade aktiva uppdraget av en viss sort på datumet. */
 export function activeMission(missions: Mission[], kind: Mission['kind'], date: ISODate): Mission | null {
-  return missions.filter((m) => m.kind === kind && missionActiveOn(m, date)).sort(latestFirst)[0] ?? null;
+  return activeMissions(missions, kind, date)[0] ?? null;
 }
 
 /**

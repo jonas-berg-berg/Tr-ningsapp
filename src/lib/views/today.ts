@@ -1,6 +1,6 @@
 import { addDays, isoWeekKey } from '../dates';
 import {
-  activeDates, activeMission, canPlayerLog, completedWeeks, governingWeeklyMission, missionLoggableOn,
+  activeDates, activeMissions, canPlayerLog, completedWeeks, governingWeeklyMission, missionLoggableOn,
   weeklyProgress, weeksWithoutMission,
 } from '../logging';
 import { dayStreak, weekStreak } from '../streaks';
@@ -29,14 +29,18 @@ export interface TodayView {
   // logId: dagens logg (för ångra), annars null.
   events: { uid: string; kind: 'training' | 'match'; title: string; time: string; checked: boolean; logId: string | null }[];
   otherOrg: { checked: boolean; kind: OtherOrgKind | null; logId: string | null };
-  extra: {
+  /**
+   * Dagens extrapass att välja mellan (alla aktiva dagsuppdrag, senast startade
+   * först). Bara ett extrapass per dag går att logga; det loggade har checked.
+   */
+  extras: {
     missionId: string;
     name: string;
     description: string | null;
     checked: boolean;
     emphasized: boolean;
     logId: string | null;
-  } | null;
+  }[];
   weekly: {
     missionId: string;
     name: string;
@@ -82,18 +86,22 @@ export function buildTodayView(input: TodayInput): TodayView {
   const otherLog = todaysLogs.find((l) => l.type === 'other_org');
   const organized = todaysLogs.some((l) => l.type === 'training' || l.type === 'match' || l.type === 'other_org');
 
-  const daily = activeMission(missions, 'daily', today);
+  // Dagens loggade extrapass räknas även om uppdraget inte längre är aktivt.
   const extraLog = todaysLogs.find((l) => l.type === 'extra');
-  const extra = daily
-    ? {
-        missionId: daily.id,
-        name: daily.name,
-        description: daily.description,
-        checked: extraLog !== undefined,
-        emphasized: !organized,
-        logId: extraLog?.id ?? null,
-      }
-    : null;
+  const daily = activeMissions(missions, 'daily', today);
+  const loggedMission = extraLog ? missions.find((m) => m.id === extraLog.missionId) : undefined;
+  if (loggedMission && !daily.some((m) => m.id === loggedMission.id)) daily.unshift(loggedMission);
+  const extras = daily.map((m) => {
+    const checked = extraLog !== undefined && extraLog.missionId === m.id;
+    return {
+      missionId: m.id,
+      name: m.name,
+      description: m.description,
+      checked,
+      emphasized: !organized,
+      logId: checked ? extraLog!.id : null,
+    };
+  });
 
   // Veckans styrande uppdrag (samma regel som veckostreaken och påminnelsen).
   const week = isoWeekKey(today);
@@ -123,7 +131,7 @@ export function buildTodayView(input: TodayInput): TodayView {
     frozenThisWeek: streak.frozenDates.some((d) => isoWeekKey(d) === currentWeek),
     events,
     otherOrg: { checked: otherLog !== undefined, kind: otherLog?.otherKind ?? null, logId: otherLog?.id ?? null },
-    extra,
+    extras,
     weekly,
     goals: input.goals
       .filter((g) => g.startsOn <= today && today <= g.endsOn)

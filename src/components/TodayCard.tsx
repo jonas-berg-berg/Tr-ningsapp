@@ -1,10 +1,9 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { logEvent, logExtra, logOtherOrg, undoLog } from '@/app/(player)/actions';
 import type { ActionResult } from '@/lib/actions/log-result';
 import type { OtherOrgKind } from '@/lib/types';
-import { nextCheckIn } from '@/lib/views/checkin';
 import type { TodayView } from '@/lib/views/today';
 import { CheckRow } from './CheckRow';
 
@@ -14,15 +13,16 @@ const OTHER_LABELS: Record<OtherOrgKind, string> = {
   ovrigt: 'Övrigt',
 };
 
-type Props = Pick<TodayView, 'date' | 'events' | 'otherOrg' | 'extra'>;
+type Props = Pick<TodayView, 'date' | 'events' | 'otherOrg' | 'extras'>;
 
-export function TodayCard({ date, events, otherOrg, extra }: Props) {
+export function TodayCard({ date, events, otherOrg, extras }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choosingOther, setChoosingOther] = useState(false);
   const [, startTransition] = useTransition();
-  const otherRef = useRef<HTMLDivElement>(null);
-  const next = nextCheckIn({ events, otherOrg, extra });
+  // Bara ett extrapass per dag: när ett är loggat visas bara det.
+  const chosenExtra = extras.find((x) => x.checked);
+  const shownExtras = chosenExtra ? [chosenExtra] : extras;
 
   function run(key: string, action: () => Promise<ActionResult>) {
     setError(null);
@@ -32,17 +32,6 @@ export function TodayCard({ date, events, otherOrg, extra }: Props) {
       if (!result.ok) setError(result.error);
       setBusy(null);
     });
-  }
-
-  /** Den stora knappen: checkar in nästa pass i listan, eller öppnar valet för annan träning. */
-  function checkInNext() {
-    if (!next) return;
-    if (next.kind === 'event') run(next.uid, () => logEvent(next.uid));
-    else if (next.kind === 'extra') run('extra', () => logExtra(date, next.missionId));
-    else {
-      setChoosingOther(true);
-      requestAnimationFrame(() => otherRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-    }
   }
 
   return (
@@ -78,7 +67,7 @@ export function TodayCard({ date, events, otherOrg, extra }: Props) {
           {!otherOrg.checked && <span className="block text-sm text-zinc-400">Fotboll, annat lag…</span>}
         </CheckRow>
       ) : (
-        <div ref={otherRef} className="rounded-2xl border border-club bg-zinc-900 p-3">
+        <div className="rounded-2xl border border-club bg-zinc-900 p-3">
           <p className="mb-2 px-1 font-semibold">Vilken träning?</p>
           <div className="grid grid-cols-1 gap-2">
             {(Object.keys(OTHER_LABELS) as OtherOrgKind[]).map((kind) => (
@@ -102,42 +91,37 @@ export function TodayCard({ date, events, otherOrg, extra }: Props) {
         </div>
       )}
 
-      {extra && (
+      {!chosenExtra && extras.length > 1 && (
+        <p className="-mb-1 px-1 pt-1 text-xs font-bold tracking-widest text-zinc-400 uppercase">
+          Extrapass – välj ett
+        </p>
+      )}
+      {shownExtras.map((x) => (
         <CheckRow
-          checked={extra.checked}
-          emphasized={extra.emphasized}
-          pending={busy === 'extra'}
+          key={x.missionId}
+          checked={x.checked}
+          emphasized={x.emphasized}
+          // Alla extrapass väntar ihop, så att man inte hinner välja två.
+          pending={busy?.startsWith('extra:') ?? false}
           badge="+1 pass"
-          onToggle={() => run('extra', () => (extra.logId ? undoLog(extra.logId) : logExtra(date, extra.missionId)))}
+          onToggle={() =>
+            run(`extra:${x.missionId}`, () => (x.logId ? undoLog(x.logId) : logExtra(date, x.missionId)))
+          }
         >
           <span className="block font-semibold">
-            Extrapass: {extra.name}{' '}
-            {!extra.emphasized && !extra.checked && (
+            Extrapass: {x.name}{' '}
+            {!x.emphasized && !x.checked && (
               <span className="text-sm font-normal text-zinc-400">(frivilligt idag)</span>
             )}
           </span>
-          {extra.description && <span className="block text-sm text-zinc-400">{extra.description}</span>}
+          {x.description && <span className="block text-sm text-zinc-400">{x.description}</span>}
         </CheckRow>
-      )}
+      ))}
 
       {error && (
         <p role="alert" className="text-sm text-red-400">
           {error}
         </p>
-      )}
-
-      {next && !choosingOther && (
-        <div className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-background from-40% to-transparent px-4 pt-8 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          <button
-            type="button"
-            onClick={checkInNext}
-            disabled={busy !== null}
-            className="mx-auto block h-16 w-full max-w-md rounded-2xl bg-club font-display text-[22px] leading-tight font-black tracking-wider text-white uppercase shadow-[0_6px_0_var(--color-club-deep),0_10px_30px_rgb(227_6_19/0.35)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_var(--color-club-deep)] disabled:opacity-70"
-          >
-            {busy !== null ? 'Checkar in…' : 'Checka in passet'}
-            <span className="block font-sans text-xs font-semibold tracking-normal normal-case opacity-85">{next.label}</span>
-          </button>
-        </div>
       )}
     </div>
   );
