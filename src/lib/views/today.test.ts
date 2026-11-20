@@ -126,15 +126,23 @@ describe('buildTodayView – extrapass', () => {
     expect(view.extras.map((x) => [x.missionId, x.checked])).toEqual([['d2', false], ['d1', false]]);
   });
 
-  it('bara det loggade extrapasset är checked', () => {
+  it('alla extrapass syns kvar när ett är ikryssat', () => {
     const view = buildTodayView(input({ missions: [daily, mini], logs: [log({ id: 'L9', type: 'extra', missionId: 'd1' })] }));
     expect(view.extras.map((x) => [x.missionId, x.checked, x.logId])).toEqual([['d2', false, null], ['d1', true, 'L9']]);
+  });
+
+  it('flera extrapass kan vara ikryssade samma dag', () => {
+    const view = buildTodayView(input({
+      missions: [daily, mini],
+      logs: [log({ id: 'L8', type: 'extra', missionId: 'd2' }), log({ id: 'L9', type: 'extra', missionId: 'd1' })],
+    }));
+    expect(view.extras.map((x) => [x.missionId, x.checked, x.logId])).toEqual([['d2', true, 'L8'], ['d1', true, 'L9']]);
   });
 
   it('visar dagens loggade extrapass även om uppdraget har slutat', () => {
     const ended = { ...mini, activeTo: '2026-11-16' };
     const view = buildTodayView(input({ missions: [daily, ended], logs: [log({ type: 'extra', missionId: 'd2' })] }));
-    expect(view.extras.map((x) => [x.missionId, x.checked])).toEqual([['d2', true], ['d1', false]]);
+    expect(view.extras.map((x) => [x.missionId, x.checked])).toEqual([['d1', false], ['d2', true]]);
   });
 });
 
@@ -234,7 +242,10 @@ describe('buildTodayView – streaks, lagmål och igår', () => {
     const old: TeamGoal = { ...goal, id: 'g0', endsOn: '2026-11-10' };
     const view = buildTodayView(input({ goals: [goal, old], goalTotals: { g1: 132 } }));
     expect(view.goals).toEqual([
-      { id: 'g1', name: '200 pass före jul', metric: 'sessions', total: 132, target: 200, reward: 'Pizza!' },
+      {
+        id: 'g1', name: '200 pass före jul', metric: 'sessions', total: 132, target: 200, reward: 'Pizza!',
+        startsOn: '2026-11-01', endsOn: '2026-12-20',
+      },
     ]);
   });
 
