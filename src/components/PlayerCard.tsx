@@ -54,7 +54,18 @@ function Part({ label, value, unit, score }: { label: string; value: number; uni
   );
 }
 
-export function PlayerCard({ name, jerseyNumber, stats }: { name: string; jerseyNumber: number | null; stats: CardStats }) {
+export function PlayerCard({
+  name,
+  jerseyNumber,
+  stats,
+  passesLeft = null,
+}: {
+  name: string;
+  jerseyNumber: number | null;
+  stats: CardStats;
+  /** Pass kvar till nästa nivå (från triggers), annars visas betyg kvar. */
+  passesLeft?: number | null;
+}) {
   const tierIndex = TIERS.findIndex((t) => t.tier === stats.tier);
   const label = tierLabel(stats.tier);
 
@@ -117,9 +128,7 @@ export function PlayerCard({ name, jerseyNumber, stats }: { name: string; jersey
               <span>
                 Nästa nivå: <strong>{tierLabel(stats.next.tier)}</strong>
               </span>
-              <span>
-                {stats.next.pointsLeft} poäng kvar
-              </span>
+              <span>{passesLeft !== null ? `${passesLeft} pass kvar` : `${stats.next.pointsLeft} betyg kvar`}</span>
             </>
           ) : (
             <span>
