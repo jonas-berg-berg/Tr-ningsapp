@@ -12,7 +12,7 @@ const TEST_DB = 'traningsappen_test';
 const ROOT = join(__dirname, '..', '..');
 const SHIM = join(ROOT, 'supabase', 'tests', 'shim.sql');
 // 0002_cron.sql kräver Supabase och laddas aldrig här.
-const MIGRATIONS = ['0001_init.sql', '0003_jersey_number.sql'].map((f) => join(ROOT, 'supabase', 'migrations', f));
+const MIGRATIONS = ['0001_init.sql', '0003_jersey_number.sql', '0004_extra_per_mission.sql'].map((f) => join(ROOT, 'supabase', 'migrations', f));
 
 const A = '00000000-0000-0000-0000-00000000000a';
 const B = '00000000-0000-0000-0000-00000000000b';
@@ -204,6 +204,33 @@ describe('logs', () => {
       return sqlState(
         c.query(`insert into logs (player_id, date, type, event_uid) values ($1, ${TODAY}, 'training', 'ev-1')`, [A]),
       );
+    });
+    expect(code).toBe('23505');
+  });
+
+  it('flera extrapass samma dag går, men samma uppdrag bara en gång', async () => {
+    const code = await as(A, async (c) => {
+      await c.query('reset role');
+      const { rows } = await c.query(
+        `insert into missions (kind, name, active_from) values ('daily', 'Minipass', ${TODAY} - 1) returning id`,
+      );
+      const mini = rows[0].id as string;
+      await switchTo(c, A);
+      const extra = (mission: string) =>
+        c.query(`insert into logs (player_id, date, type, mission_id) values ($1, ${TODAY}, 'extra', $2)`, [A, mission]);
+      await extra(M_DAILY);
+      await extra(mini);
+      return sqlState(extra(mini));
+    });
+    expect(code).toBe('23505');
+  });
+
+  it('annan träning går bara en gång per dag', async () => {
+    const code = await as(A, async (c) => {
+      const other = (kind: string) =>
+        c.query(`insert into logs (player_id, date, type, other_kind) values ($1, ${TODAY}, 'other_org', $2)`, [A, kind]);
+      await other('fotboll');
+      return sqlState(other('ovrigt'));
     });
     expect(code).toBe('23505');
   });

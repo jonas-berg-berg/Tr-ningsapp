@@ -30,8 +30,8 @@ export interface TodayView {
   events: { uid: string; kind: 'training' | 'match'; title: string; time: string; checked: boolean; logId: string | null }[];
   otherOrg: { checked: boolean; kind: OtherOrgKind | null; logId: string | null };
   /**
-   * Dagens extrapass att välja mellan (alla aktiva dagsuppdrag, senast startade
-   * först). Bara ett extrapass per dag går att logga; det loggade har checked.
+   * Dagens extrapass (alla aktiva dagsuppdrag, senast startade först). De går
+   * att kombinera: ett per uppdrag och dag.
    */
   extras: {
     missionId: string;
@@ -51,7 +51,16 @@ export interface TodayView {
     /** Vyns dags löplogg (en per dag och uppdrag), för visning och ångra. */
     todayLog: { id: string; km: number | null } | null;
   } | null;
-  goals: { id: string; name: string; metric: TeamGoal['metric']; total: number; target: number; reward: string }[];
+  goals: {
+    id: string;
+    name: string;
+    metric: TeamGoal['metric'];
+    total: number;
+    target: number;
+    reward: string;
+    startsOn: ISODate;
+    endsOn: ISODate;
+  }[];
   canLogYesterday: boolean;
 }
 
@@ -86,20 +95,23 @@ export function buildTodayView(input: TodayInput): TodayView {
   const otherLog = todaysLogs.find((l) => l.type === 'other_org');
   const organized = todaysLogs.some((l) => l.type === 'training' || l.type === 'match' || l.type === 'other_org');
 
-  // Dagens loggade extrapass räknas även om uppdraget inte längre är aktivt.
-  const extraLog = todaysLogs.find((l) => l.type === 'extra');
+  // Alla aktiva extrapass visas hela tiden och kan kombineras (ett per uppdrag och dag).
+  // Dagens loggade extrapass visas även om uppdraget inte längre är aktivt.
+  const extraLogs = todaysLogs.filter((l) => l.type === 'extra');
   const daily = activeMissions(missions, 'daily', today);
-  const loggedMission = extraLog ? missions.find((m) => m.id === extraLog.missionId) : undefined;
-  if (loggedMission && !daily.some((m) => m.id === loggedMission.id)) daily.unshift(loggedMission);
+  for (const l of extraLogs) {
+    const m = missions.find((x) => x.id === l.missionId);
+    if (m && !daily.some((d) => d.id === m.id)) daily.push(m);
+  }
   const extras = daily.map((m) => {
-    const checked = extraLog !== undefined && extraLog.missionId === m.id;
+    const log = extraLogs.find((l) => l.missionId === m.id);
     return {
       missionId: m.id,
       name: m.name,
       description: m.description,
-      checked,
+      checked: log !== undefined,
       emphasized: !organized,
-      logId: checked ? extraLog!.id : null,
+      logId: log?.id ?? null,
     };
   });
 
@@ -142,6 +154,8 @@ export function buildTodayView(input: TodayInput): TodayView {
         total: goalTotals[g.id] ?? 0,
         target: g.target,
         reward: g.reward ?? '',
+        startsOn: g.startsOn,
+        endsOn: g.endsOn,
       })),
     canLogYesterday: canPlayerLog(addDays(today, -1), now),
   };

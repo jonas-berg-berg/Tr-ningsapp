@@ -4,7 +4,7 @@ import { requireCoachPage } from '@/lib/auth/require-coach';
 import { toStockholmDate } from '@/lib/dates';
 import { toGoal } from '@/lib/supabase/rows';
 import type { TeamGoal } from '@/lib/types';
-import { createGoal, endGoal } from './actions';
+import { createGoal, updateGoalDates } from './actions';
 
 const METRIC_LABELS: Record<TeamGoal['metric'], string> = {
   sessions: 'Antal pass (alla typer)',
@@ -102,15 +102,25 @@ async function Goals() {
                   {g.startsOn} – {g.endsOn}
                   {g.reward && ` · 🏆 ${g.reward}`}
                 </p>
-                {!ended && (
-                  <ActionForm action={endGoal} submitLabel="Ändra slutdatum" variant="secondary" className="flex flex-wrap items-end gap-2">
-                    <input type="hidden" name="id" value={g.id} />
-                    <label className="flex flex-col gap-1 text-xs">
-                      Sista dag
-                      <input type="date" name="ends_on" required defaultValue={today < g.startsOn ? g.startsOn : today} min={g.startsOn} className={input} />
-                    </label>
-                  </ActionForm>
-                )}
+                <p className="text-xs text-zinc-400">
+                  Bara pass från och med första dag räknas. Flytta första dag bakåt om fler pass ska räknas.
+                </p>
+                <ActionForm
+                  action={updateGoalDates}
+                  submitLabel="Spara datum"
+                  variant="secondary"
+                  className="flex flex-wrap items-end gap-2"
+                >
+                  <input type="hidden" name="id" value={g.id} />
+                  <label className="flex flex-col gap-1 text-xs">
+                    Första dag
+                    <input type="date" name="starts_on" required defaultValue={g.startsOn} className={input} />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs">
+                    Sista dag
+                    <input type="date" name="ends_on" required defaultValue={g.endsOn} className={input} />
+                  </label>
+                </ActionForm>
               </li>
             );
           })}

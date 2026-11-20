@@ -5,6 +5,8 @@ type Goal = TodayView['goals'][number];
 const JOURNEY_KM = 450; // Lerum → Stockholm, 45 mil
 
 const fmt = (n: number) => n.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
+const dayFmt = new Intl.DateTimeFormat('sv-SE', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtDay = (d: string) => dayFmt.format(new Date(`${d}T12:00:00Z`)).replace(/\.$/, '');
 
 export function GoalMeter({ goal }: { goal: Goal }) {
   const share = goal.target > 0 ? Math.min(goal.total / goal.target, 1) : 0;
@@ -59,6 +61,9 @@ export function GoalMeter({ goal }: { goal: Goal }) {
       )}
 
       {goal.reward && <p className="text-sm font-semibold text-gold">🏆 Belöning: {goal.reward}</p>}
+      <p className="text-xs text-zinc-500">
+        Alla spelares pass {fmtDay(goal.startsOn)} – {fmtDay(goal.endsOn)}
+      </p>
     </div>
   );
 }

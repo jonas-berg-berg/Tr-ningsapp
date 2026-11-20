@@ -20,9 +20,6 @@ export function TodayCard({ date, events, otherOrg, extras }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [choosingOther, setChoosingOther] = useState(false);
   const [, startTransition] = useTransition();
-  // Bara ett extrapass per dag: när ett är loggat visas bara det.
-  const chosenExtra = extras.find((x) => x.checked);
-  const shownExtras = chosenExtra ? [chosenExtra] : extras;
 
   function run(key: string, action: () => Promise<ActionResult>) {
     setError(null);
@@ -91,18 +88,12 @@ export function TodayCard({ date, events, otherOrg, extras }: Props) {
         </div>
       )}
 
-      {!chosenExtra && extras.length > 1 && (
-        <p className="-mb-1 px-1 pt-1 text-xs font-bold tracking-widest text-zinc-400 uppercase">
-          Extrapass – välj ett
-        </p>
-      )}
-      {shownExtras.map((x) => (
+      {extras.map((x) => (
         <CheckRow
           key={x.missionId}
           checked={x.checked}
           emphasized={x.emphasized}
-          // Alla extrapass väntar ihop, så att man inte hinner välja två.
-          pending={busy?.startsWith('extra:') ?? false}
+          pending={busy === `extra:${x.missionId}`}
           badge="+1 pass"
           onToggle={() =>
             run(`extra:${x.missionId}`, () => (x.logId ? undoLog(x.logId) : logExtra(date, x.missionId)))

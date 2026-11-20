@@ -47,7 +47,7 @@ npx supabase db push
 
 - `login` öppnar webbläsaren så att du kan godkänna.
 - `link` frågar efter databaslösenordet från steg 1.
-- `db push` visar vilka migreringar som körs och frågar om du vill fortsätta. Det ska vara **tre**: `0001_init.sql` (tabeller och behörigheter), `0002_cron.sql` (de schemalagda anropen) och `0003_jersey_number.sql` (tröjnummer på spelarkortet). Svara `Y`.
+- `db push` visar vilka migreringar som körs och frågar om du vill fortsätta. Det ska vara **fyra**: `0001_init.sql` (tabeller och behörigheter), `0002_cron.sql` (de schemalagda anropen), `0003_jersey_number.sql` (tröjnummer på spelarkortet) och `0004_extra_per_mission.sql` (flera extrapass samma dag). Svara `Y`. Har du redan kört de tidigare visar `db push` bara de nya.
 
 Om `0002_cron.sql` klagar på att något saknas: gå till Supabase, Database, Extensions, slå på `pg_cron` och `pg_net`, och kör `npx supabase db push` igen.
 
@@ -254,6 +254,6 @@ npm run lint
 npm run build                # produktionsbygge
 ```
 
-`npm run test:db` kräver en vanlig PostgreSQL som lyssnar på port 54329 på den här datorn (användare `postgres`). Testet skapar och tömmer sin egen databas `traningsappen_test` och laddar `supabase/tests/shim.sql`, `0001_init.sql` och `0003_jersey_number.sql`. `0002_cron.sql` laddas aldrig lokalt eftersom den kräver Supabase. Andra inställningar går att ge med miljövariablerna `PGHOST`, `PGPORT` och `PGUSER`.
+`npm run test:db` kräver en vanlig PostgreSQL som lyssnar på port 54329 på den här datorn (användare `postgres`). Testet skapar och tömmer sin egen databas `traningsappen_test` och laddar `supabase/tests/shim.sql`, `0001_init.sql`, `0003_jersey_number.sql` och `0004_extra_per_mission.sql`. `0002_cron.sql` laddas aldrig lokalt eftersom den kräver Supabase. Andra inställningar går att ge med miljövariablerna `PGHOST`, `PGPORT` och `PGUSER`.
 
 `AGENTS.md` innehåller en påminnelse till Claude Code om att den här Next.js-versionen skiljer sig från det den kan sedan tidigare. Behåll filen.

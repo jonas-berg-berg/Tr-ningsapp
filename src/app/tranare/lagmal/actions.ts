@@ -41,25 +41,33 @@ export async function createGoal(_prev: FormState, formData: FormData): Promise<
   return { ok: `Lagmålet ${name} är skapat.` };
 }
 
-/** Avslutar ett lagmål genom att sätta ends_on. Lagmål raderas aldrig. */
-export async function endGoal(_prev: FormState, formData: FormData): Promise<FormState> {
+/**
+ * Ändrar lagmålets period. Startdatumet styr vilka pass som räknas, så det
+ * måste gå att flytta bakåt om målet skapades med fel datum. Avsluta ett mål
+ * genom att sätta sista dag till idag. Lagmål raderas aldrig.
+ */
+export async function updateGoalDates(_prev: FormState, formData: FormData): Promise<FormState> {
   const coach = await getCoach();
   if (!coach) return { error: NOT_COACH };
 
   const id = field(formData, 'id');
+  const startsOn = field(formData, 'starts_on');
   const endsOn = field(formData, 'ends_on');
   if (!UUID_RE.test(id)) return { error: GENERIC };
-  if (!isISODate(endsOn)) return { error: 'Välj ett giltigt datum.' };
+  if (!isISODate(startsOn) || !isISODate(endsOn)) return { error: 'Välj giltiga datum.' };
+  if (endsOn < startsOn) return { error: 'Sista dag kan inte vara före första dag.' };
 
-  const { data: goal } = await coach.supabase.from('team_goals').select('starts_on').eq('id', id).maybeSingle();
-  if (!goal) return { error: 'Lagmålet finns inte.' };
-  if (endsOn < (goal.starts_on as string)) return { error: 'Slutdatum kan inte vara före startdatum.' };
-
-  const { error } = await coach.supabase.from('team_goals').update({ ends_on: endsOn }).eq('id', id);
+  const { data, error } = await coach.supabase
+    .from('team_goals')
+    .update({ starts_on: startsOn, ends_on: endsOn })
+    .eq('id', id)
+    .select('id');
   if (error) {
-    console.error('Kunde inte avsluta lagmål', { code: error.code });
+    console.error('Kunde inte ändra lagmål', { code: error.code });
     return { error: GENERIC };
   }
+  if (!data || data.length === 0) return { error: 'Lagmålet finns inte.' };
   revalidatePath('/tranare/lagmal');
-  return { ok: 'Lagmålet är avslutat.' };
+  revalidatePath('/');
+  return { ok: 'Datumen är sparade.' };
 }
