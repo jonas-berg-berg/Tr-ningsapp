@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { Boosts } from '@/components/Boosts';
 import { EnableNotifications } from '@/components/EnableNotifications';
 import { InstallGuide } from '@/components/InstallGuide';
 import { Lagkemi } from '@/components/Lagkemi';
+import { LevelCounter } from '@/components/LevelCounter';
 import { LogoutButton } from '@/components/LogoutButton';
 import { NotMember } from '@/components/NotMember';
 import { PlayerCard } from '@/components/PlayerCard';
@@ -12,7 +14,8 @@ import { StreakBadge } from '@/components/StreakBadge';
 import { TodayCard } from '@/components/TodayCard';
 import { WeeklyCard } from '@/components/WeeklyCard';
 import { buildCardStats } from '@/lib/card';
-import { addDays, toStockholmDate } from '@/lib/dates';
+import { addDays, stockholmHour, toStockholmDate } from '@/lib/dates';
+import { nextLevel, passGain, recordNudges, streakAlert } from '@/lib/triggers';
 import { createClient } from '@/lib/supabase/server';
 import { buildTodayView } from '@/lib/views/today';
 import { loadTodayData } from './data';
@@ -82,6 +85,12 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
   const view = buildTodayView({ today: viewDate, now, ...data });
   // Kortet visar alltid läget idag, även i igår-läget.
   const card = buildCardStats(data.logs, now);
+  // Triggers: vad nästa pass ger. Nivå och vinst räknas på dagen vyn visar.
+  const level = nextLevel(data.logs, viewDate, now, card);
+  const gain = passGain(data.logs, viewDate, now, card);
+  const gainBadge = `${gain.rating > 0 ? `+${gain.rating} betyg` : '+1 pass'}${gain.streak ? ' 🔥' : ''}`;
+  const alert = yesterdayMode ? null : streakAlert(data.logs, now, stockholmHour(new Date()));
+  const nudges = recordNudges(data.logs, now).slice(0, 2);
   const jerseyNumber = typeof profile.jersey_number === 'number' ? profile.jersey_number : null;
   const weeklyDays = view.weekly ? (data.missions.find((m) => m.id === view.weekly!.missionId)?.weekdays ?? []) : [];
 
@@ -106,7 +115,10 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
         </div>
       </header>
 
-      <PlayerCard name={profile.display_name} jerseyNumber={jerseyNumber} stats={card} />
+      {/* Streakvarning och rekord först: det är det som ska locka till ett pass idag. */}
+      <Boosts alert={alert} nudges={nudges} />
+
+      <PlayerCard name={profile.display_name} jerseyNumber={jerseyNumber} stats={card} passesLeft={level?.passesLeft ?? null} />
 
       <nav className="flex gap-1 rounded-xl bg-zinc-900 p-1" aria-label="Välj dag">
         <Link href="/" className={tab(!yesterdayMode)} aria-current={!yesterdayMode ? 'page' : undefined}>
@@ -130,7 +142,8 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
             {formatDay(view.date)}
           </span>
         </div>
-        <TodayCard date={view.date} events={view.events} otherOrg={view.otherOrg} extras={view.extras} />
+        <LevelCounter tier={card.tier} next={level} />
+        <TodayCard date={view.date} events={view.events} otherOrg={view.otherOrg} extras={view.extras} gain={gainBadge} />
         {view.frozenThisWeek && (
           <p className="text-xs text-sky-300">❄️ Veckans frysdag är använd – missa inte en dag till.</p>
         )}

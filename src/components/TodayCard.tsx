@@ -13,9 +13,12 @@ const OTHER_LABELS: Record<OtherOrgKind, string> = {
   ovrigt: 'Övrigt',
 };
 
-type Props = Pick<TodayView, 'date' | 'events' | 'otherOrg' | 'extras'>;
+type Props = Pick<TodayView, 'date' | 'events' | 'otherOrg' | 'extras'> & {
+  /** Vad ett pass till ger, visas på rader som inte är ikryssade (t.ex. "+2 betyg 🔥"). */
+  gain: string;
+};
 
-export function TodayCard({ date, events, otherOrg, extras }: Props) {
+export function TodayCard({ date, events, otherOrg, extras, gain }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choosingOther, setChoosingOther] = useState(false);
@@ -38,7 +41,7 @@ export function TodayCard({ date, events, otherOrg, extras }: Props) {
           key={e.uid}
           checked={e.checked}
           pending={busy === e.uid}
-          badge="+1 pass"
+          badge={e.checked ? '+1 pass' : gain}
           onToggle={() => run(e.uid, () => (e.logId ? undoLog(e.logId) : logEvent(e.uid)))}
         >
           <span className="block font-semibold">
@@ -52,7 +55,7 @@ export function TodayCard({ date, events, otherOrg, extras }: Props) {
         <CheckRow
           checked={otherOrg.checked}
           pending={busy === 'other'}
-          badge="+1 pass"
+          badge={otherOrg.checked ? '+1 pass' : gain}
           onToggle={() => {
             if (otherOrg.logId) run('other', () => undoLog(otherOrg.logId!));
             else setChoosingOther(true);
@@ -94,7 +97,7 @@ export function TodayCard({ date, events, otherOrg, extras }: Props) {
           checked={x.checked}
           emphasized={x.emphasized}
           pending={busy === `extra:${x.missionId}`}
-          badge="+1 pass"
+          badge={x.checked ? '+1 pass' : gain}
           onToggle={() =>
             run(`extra:${x.missionId}`, () => (x.logId ? undoLog(x.logId) : logExtra(date, x.missionId)))
           }
