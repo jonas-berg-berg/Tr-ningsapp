@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { Boosts } from '@/components/Boosts';
 import { EnableNotifications } from '@/components/EnableNotifications';
 import { InstallGuide } from '@/components/InstallGuide';
@@ -8,7 +9,7 @@ import { Lagkemi } from '@/components/Lagkemi';
 import { LevelCounter } from '@/components/LevelCounter';
 import { LogoutButton } from '@/components/LogoutButton';
 import { NotMember } from '@/components/NotMember';
-import { PlayerCard } from '@/components/PlayerCard';
+import { PlayerCard, RatingBreakdown } from '@/components/PlayerCard';
 import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import { StreakBadge } from '@/components/StreakBadge';
 import { TodayCard } from '@/components/TodayCard';
@@ -53,6 +54,8 @@ function HomeSkeleton() {
 }
 
 async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchParams'>) {
+  // Sidan bygger på dagens datum och klockslag: rendera alltid vid förfrågan.
+  await connection();
   const { dag } = await searchParams;
   const yesterdayMode = dag === 'igar';
 
@@ -118,7 +121,7 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
       {/* Streakvarning och rekord först: det är det som ska locka till ett pass idag. */}
       <Boosts alert={alert} nudges={nudges} />
 
-      <PlayerCard name={profile.display_name} jerseyNumber={jerseyNumber} stats={card} passesLeft={level?.passesLeft ?? null} />
+      <PlayerCard name={profile.display_name} jerseyNumber={jerseyNumber} stats={card} />
 
       <nav className="flex gap-1 rounded-xl bg-zinc-900 p-1" aria-label="Välj dag">
         <Link href="/" className={tab(!yesterdayMode)} aria-current={!yesterdayMode ? 'page' : undefined}>
@@ -161,6 +164,8 @@ async function PlayerHomeContent({ searchParams }: Pick<PageProps<'/'>, 'searchP
       <RegisterServiceWorker />
       <InstallGuide />
       <EnableNotifications />
+
+      <RatingBreakdown stats={card} />
 
       <nav className="flex flex-col gap-2" aria-label="Mer">
         <Link href="/statistik" className="flex h-12 items-center justify-between rounded-xl bg-zinc-900 px-4 font-semibold">

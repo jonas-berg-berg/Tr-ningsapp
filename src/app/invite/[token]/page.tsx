@@ -34,7 +34,7 @@ async function InviteContent({ params }: Pick<PageProps<'/invite/[token]'>, 'par
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-bold">{INVALID_INVITE}</h1>
           <p className="text-zinc-400">Be tränaren om en ny länk, eller logga in om du redan har ett konto.</p>
-          <Link href="/login" className="font-semibold text-lime-400">
+          <Link href="/login" className="font-semibold text-white underline">
             Till inloggningen ›
           </Link>
         </div>

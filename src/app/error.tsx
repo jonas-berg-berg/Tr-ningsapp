@@ -14,7 +14,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
       <button
         type="button"
         onClick={() => retry()}
-        className="h-12 rounded-xl bg-lime-400 px-6 font-bold text-zinc-950"
+        className="h-12 rounded-xl bg-club px-6 font-bold text-white"
       >
         Försök igen
       </button>

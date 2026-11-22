@@ -29,7 +29,7 @@ const OTHER_LABELS: Record<OtherOrgKind, string> = {
 const timeFmt = new Intl.DateTimeFormat('sv-SE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Stockholm' });
 const fmtKm = (n: number) => n.toLocaleString('sv-SE', { maximumFractionDigits: 2 });
 const activeOn = (m: Mission, date: string) => m.activeFrom <= date && (m.activeTo === null || m.activeTo >= date);
-const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400';
+const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-club';
 
 export default function CoachPlayerPage({ params, searchParams }: PageProps<'/tranare/spelare/[id]'>) {
   return (

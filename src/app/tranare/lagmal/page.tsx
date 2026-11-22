@@ -11,7 +11,7 @@ const METRIC_LABELS: Record<TeamGoal['metric'], string> = {
   extra: 'Antal extrapass',
   km: 'Löpta km',
 };
-const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400';
+const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-club';
 const fmt = (n: number) => n.toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 
 export default function GoalsPage() {
@@ -90,7 +90,7 @@ async function Goals() {
               <li key={g.id} className="flex flex-col gap-2 rounded-2xl bg-zinc-900 p-4">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="font-semibold">{g.name}</p>
-                  <span className={`shrink-0 text-xs font-bold ${ended ? 'text-zinc-500' : 'text-lime-400'}`}>
+                  <span className={`shrink-0 text-xs font-bold ${ended ? 'text-zinc-500' : 'text-gold'}`}>
                     {ended ? 'Avslutat' : g.startsOn > today ? 'Kommande' : 'Pågår'}
                   </span>
                 </div>

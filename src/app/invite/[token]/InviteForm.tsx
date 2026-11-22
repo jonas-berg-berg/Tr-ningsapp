@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import { redeemInvite } from './actions';
 
 const inputClass =
-  'h-12 rounded-xl border border-zinc-700 bg-zinc-900 px-4 text-lg outline-none focus:border-lime-400';
+  'h-12 rounded-xl border border-zinc-700 bg-zinc-900 px-4 text-lg outline-none focus:border-club';
 
 export function InviteForm({ token }: { token: string }) {
   const [state, action, pending] = useActionState(redeemInvite.bind(null, token), undefined);
@@ -37,7 +37,7 @@ export function InviteForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-14 rounded-xl bg-lime-400 text-lg font-bold text-zinc-950 disabled:opacity-60"
+        className="h-14 rounded-xl bg-club text-lg font-bold text-white disabled:opacity-60"
       >
         {pending ? 'Skapar konto…' : 'Skapa konto'}
       </button>
