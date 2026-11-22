@@ -30,6 +30,11 @@ describe('nextLevel', () => {
     expect(buildCardStats([...logs, ...oneLess], TODAY).rating).toBeLessThan(min);
   });
 
+  it('mätaren står på noll för en ny spelare (betyget börjar på 40)', () => {
+    const stats = buildCardStats([], TODAY);
+    expect(nextLevel([], TODAY, TODAY, stats)!.progress).toBe(0);
+  });
+
   it('är null på högsta nivån', () => {
     const logs = Array.from({ length: 200 }, (_, i) => log(addDays(TODAY, -(i % 60)), i));
     const stats = buildCardStats(logs, TODAY);

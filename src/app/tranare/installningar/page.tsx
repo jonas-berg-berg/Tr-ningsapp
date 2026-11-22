@@ -41,7 +41,7 @@ async function Settings() {
               autoComplete="off"
               spellCheck={false}
               placeholder="https://portalweb.sportadmin.se/webcal?id=…"
-              className="h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400"
+              className="h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-club"
             />
           </label>
         </ActionForm>

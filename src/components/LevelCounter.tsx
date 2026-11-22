@@ -30,6 +30,7 @@ export function LevelCounter({ tier, next }: { tier: Tier; next: NextLevel | nul
   const seen = useSyncExternalStore(noopSubscribe, readSeen, () => null);
   const [dismissed, setDismissed] = useState(false);
   const seenIndex = TIERS.findIndex((t) => t.tier === seen);
+  const tierIndex = TIERS.findIndex((t) => t.tier === tier);
   const levelUp = !dismissed && seenIndex !== -1 && TIERS.findIndex((t) => t.tier === tier) > seenIndex;
 
   // Spara nivån efter visningen, så att firandet bara kommer en gång per ny nivå.
@@ -58,16 +59,15 @@ export function LevelCounter({ tier, next }: { tier: Tier; next: NextLevel | nul
       )}
 
       {next && (
-        <div className="rounded-2xl bg-zinc-950/70 px-4 py-3">
+        <div className="flex flex-col gap-2 px-1">
           <p className="flex items-baseline gap-2 font-display font-black tracking-wide uppercase">
             {next.passesLeft !== null ? (
               <>
-                <span className="text-5xl leading-none" style={{ color: TIER_COLOR[next.tier] }}>
+                <span className="text-6xl leading-[0.85]" style={{ color: TIER_COLOR[next.tier] }}>
                   {next.passesLeft}
                 </span>
                 <span className="text-2xl leading-none">
-                  pass till{' '}
-                  <span style={{ color: TIER_COLOR[next.tier] }}>{next.label}</span>
+                  pass till <span style={{ color: TIER_COLOR[next.tier] }}>{next.label}</span>
                 </span>
               </>
             ) : (
@@ -76,15 +76,27 @@ export function LevelCounter({ tier, next }: { tier: Tier; next: NextLevel | nul
               </span>
             )}
           </p>
-          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-zinc-800" aria-hidden>
-            <div
-              className="h-full rounded-full transition-[width] duration-700"
-              style={{ width: `${Math.max(4, next.progress * 100)}%`, background: TIER_COLOR[next.tier] }}
-            />
+          {/* Nivåstegen: avklarade nivåer fyllda, nästa nivå fylld så långt man har kommit. */}
+          <div className="flex gap-1" aria-hidden>
+            {TIERS.map((t, i) => (
+              <span key={t.tier} className="h-2.5 flex-1 overflow-hidden rounded-sm bg-zinc-950/60">
+                <span
+                  className="block h-full transition-[width] duration-700"
+                  style={{
+                    width: i <= tierIndex ? '100%' : i === tierIndex + 1 ? `${next.progress * 100}%` : '0%',
+                    background: TIER_COLOR[t.tier],
+                  }}
+                />
+              </span>
+            ))}
           </div>
-          <p className="mt-1.5 text-xs text-zinc-400">
-            {next.passesLeft === 1 ? 'Ett pass till idag så uppgraderas ditt kort!' : 'Varje pass du kryssar i här räknas.'}
-          </p>
+          <div className="flex justify-between font-display text-xs font-bold tracking-wider text-zinc-400 uppercase" aria-hidden>
+            {TIERS.map((t, i) => (
+              <span key={t.tier} style={i === tierIndex ? { color: TIER_COLOR[t.tier] } : undefined}>
+                {t.label}
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>

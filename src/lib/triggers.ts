@@ -1,4 +1,4 @@
-import { buildCardStats, TIERS, tierLabel, type CardStats, type Tier } from './card';
+import { buildCardStats, RATING_FLOOR, TIERS, tierLabel, type CardStats, type Tier } from './card';
 import { addDays, isoWeekKey } from './dates';
 import { activeDates } from './logging';
 import { dayStreak, historicStreaks } from './streaks';
@@ -37,7 +37,8 @@ export interface NextLevel {
 export function nextLevel(logs: LogEntry[], date: ISODate, now: ISODate, stats: CardStats): NextLevel | null {
   if (!stats.next) return null;
   const min = TIERS.find((t) => t.tier === stats.next!.tier)!.min;
-  const from = TIERS.find((t) => t.tier === stats.tier)!.min;
+  // Betyget börjar på 40 (RATING_FLOOR), så Brons-mätaren startar där och inte på 0.
+  const from = Math.max(RATING_FLOOR, TIERS.find((t) => t.tier === stats.tier)!.min);
   let passesLeft: number | null = null;
   for (let n = 1; n <= MAX_SIMULATED; n++) {
     if (buildCardStats(withPasses(logs, date, n), now).rating >= min) {

@@ -22,7 +22,7 @@ export function ActionForm({
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const button = {
-    primary: 'h-11 rounded-xl bg-lime-400 px-4 font-bold text-zinc-950',
+    primary: 'h-11 rounded-xl bg-club px-4 font-bold text-white',
     secondary: 'h-10 rounded-lg bg-zinc-800 px-3 text-sm font-semibold',
     danger: 'h-11 rounded-xl bg-red-500 px-4 font-bold text-white',
   }[variant];
@@ -39,7 +39,7 @@ export function ActionForm({
         </p>
       )}
       {state?.ok && (
-        <p role="status" className="text-sm text-lime-400">
+        <p role="status" className="text-sm text-emerald-400">
           {state.ok}
         </p>
       )}

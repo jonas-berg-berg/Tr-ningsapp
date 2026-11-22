@@ -1,7 +1,7 @@
 import '@fontsource/barlow-condensed/700.css';
 import '@fontsource/barlow-condensed/800.css';
 import '@fontsource/barlow-condensed/900.css';
-import { HALF, TIERS, tierLabel, type CardStats } from '@/lib/card';
+import { HALF, tierLabel, type CardStats } from '@/lib/card';
 import './player-card.css';
 
 /** Namnet ska få plats på en rad även när det är långt. */
@@ -58,15 +58,11 @@ export function PlayerCard({
   name,
   jerseyNumber,
   stats,
-  passesLeft = null,
 }: {
   name: string;
   jerseyNumber: number | null;
   stats: CardStats;
-  /** Pass kvar till nästa nivå (från triggers), annars visas betyg kvar. */
-  passesLeft?: number | null;
 }) {
-  const tierIndex = TIERS.findIndex((t) => t.tier === stats.tier);
   const label = tierLabel(stats.tier);
 
   return (
@@ -120,54 +116,30 @@ export function PlayerCard({
           </div>
         </div>
       </div>
-
-      <div className="pc-panel">
-        <div className="pc-panel-row">
-          {stats.next ? (
-            <>
-              <span>
-                Nästa nivå: <strong>{tierLabel(stats.next.tier)}</strong>
-              </span>
-              <span>{passesLeft !== null ? `${passesLeft} pass kvar` : `${stats.next.pointsLeft} betyg kvar`}</span>
-            </>
-          ) : (
-            <span>
-              Du har <strong>högsta nivån</strong>
-            </span>
-          )}
-        </div>
-        <div className="pc-ladder" aria-hidden>
-          {TIERS.map((t, i) => (
-            <i key={t.tier} data-done={i <= tierIndex} />
-          ))}
-        </div>
-        <div className="pc-tiers">
-          {TIERS.map((t) => (
-            <span key={t.tier} aria-current={t.tier === stats.tier ? 'step' : undefined}>
-              {t.label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <details className={`pc-panel pc-breakdown`}>
-        <summary className="pc-panel-row">
-          <span>
-            Så räknas <strong>betyget</strong>
-          </span>
-          <span className="pc-chevron" aria-hidden>
-            ›
-          </span>
-        </summary>
-        <Part label="Pass senaste 4 veckorna" value={stats.last28} score={stats.parts.last28} />
-        <Part label="Pass senaste 7 dagarna" value={stats.last7} score={stats.parts.last7} />
-        <Part label="Rekordstreak" value={stats.longestStreak} unit="dagar" score={stats.parts.longest} />
-        <p className="pc-note">
-          Betyget är snittet av de tre delarna, från 40 till 99. Varje pass ger alltid mer, men lite mindre för
-          varje gång. Halva vägen till 99 når du vid {HALF.last28} pass på 4 veckor, {HALF.last7} pass på 7 dagar
-          och {HALF.longest} dagars rekordstreak.
-        </p>
-      </details>
     </section>
+  );
+}
+
+/** Hur betyget räknas, utfällbart. Ligger längre ner på startsidan än kortet. */
+export function RatingBreakdown({ stats }: { stats: CardStats }) {
+  return (
+    <details className={`pc-panel pc-breakdown`}>
+      <summary className="pc-panel-row">
+        <span>
+          Så räknas <strong>betyget</strong>
+        </span>
+        <span className="pc-chevron" aria-hidden>
+          ›
+        </span>
+      </summary>
+      <Part label="Pass senaste 4 veckorna" value={stats.last28} score={stats.parts.last28} />
+      <Part label="Pass senaste 7 dagarna" value={stats.last7} score={stats.parts.last7} />
+      <Part label="Rekordstreak" value={stats.longestStreak} unit="dagar" score={stats.parts.longest} />
+      <p className="pc-note">
+        Betyget är snittet av de tre delarna, från 40 till 99. Varje pass ger alltid mer, men lite mindre för
+        varje gång. Halva vägen till 99 når du vid {HALF.last28} pass på 4 veckor, {HALF.last7} pass på 7 dagar
+        och {HALF.longest} dagars rekordstreak.
+      </p>
+    </details>
   );
 }

@@ -66,7 +66,7 @@ export function MonthStats({
           <div
             key={d.date}
             className={`flex aspect-square flex-col items-center justify-center rounded-lg ${
-              d.active ? 'bg-lime-400/15' : d.frozen ? 'bg-sky-400/15' : 'bg-zinc-900'
+              d.active ? 'bg-club/25' : d.frozen ? 'bg-sky-400/15' : 'bg-zinc-900'
             }`}
             aria-label={`${Number(d.date.slice(8))}${d.active ? ', aktiv' : d.frozen ? ', frysdag' : ''}`}
           >

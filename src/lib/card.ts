@@ -13,6 +13,9 @@ import type { ISODate, LogEntry } from './types';
  * Snittet sträcks sedan ut till 40–99, så att ingen har ett tvåsiffrigt lågt betyg.
  */
 
+/** Lägsta möjliga betyg (inga pass). */
+export const RATING_FLOOR = 40;
+
 export const HALF = { last28: 10, last7: 3, longest: 20 } as const;
 
 export type Tier = 'brons' | 'silver' | 'guld' | 'rod' | 'ikon';
@@ -50,7 +53,7 @@ export function partScore(value: number, half: number): number {
 /** Totalbetyget 40–99 från delpoängen (0–99 vardera). */
 export function ratingFromParts(parts: number[]): number {
   const avg = parts.reduce((sum, p) => sum + p / 99, 0) / parts.length;
-  return Math.round(40 + 59 * avg);
+  return Math.round(RATING_FLOOR + (99 - RATING_FLOOR) * avg);
 }
 
 export function tierForRating(rating: number): Tier {

@@ -8,7 +8,7 @@ import { requestOrigin } from '@/lib/origin-server';
 import { loadPlayers } from '../data';
 import { createInvite, deleteInvite, removePlayer } from './actions';
 
-const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400';
+const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-club';
 
 export default function PlayersPage({ searchParams }: PageProps<'/tranare/spelare'>) {
   return (

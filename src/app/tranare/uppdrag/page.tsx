@@ -6,7 +6,7 @@ import { toMission } from '@/lib/supabase/rows';
 import { createMission, endMission } from './actions';
 
 const DAYS = ['mån', 'tis', 'ons', 'tor', 'fre', 'lör', 'sön'];
-const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-lime-400';
+const input = 'h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 outline-none focus:border-club';
 const fmtKm = (n: number) => n.toLocaleString('sv-SE', { maximumFractionDigits: 2 });
 
 export default function MissionsPage() {
@@ -87,7 +87,7 @@ async function Missions() {
                       {m.weekdays.length > 0 && `, ${m.weekdays.map((d) => DAYS[d - 1]).join(' ')}`})
                     </span>
                   </p>
-                  <span className={`shrink-0 text-xs font-bold ${ended ? 'text-zinc-500' : 'text-lime-400'}`}>
+                  <span className={`shrink-0 text-xs font-bold ${ended ? 'text-zinc-500' : 'text-gold'}`}>
                     {ended ? 'Avslutat' : m.activeFrom > today ? 'Kommande' : 'Aktivt'}
                   </span>
                 </div>

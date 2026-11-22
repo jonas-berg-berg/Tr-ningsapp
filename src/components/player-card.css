@@ -252,11 +252,11 @@
   opacity: 0.8;
 }
 
-/* Nivåstegen och betygsuppdelningen under kortet */
+/* Betygsuppdelningen (RatingBreakdown) */
 .pc-panel {
   padding: 14px 16px;
   border-radius: 16px;
-  background: #18181b;
+  background: var(--color-zinc-900);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 .pc-panel-row {
@@ -265,43 +265,14 @@
   align-items: baseline;
   gap: 8px;
   font-size: 14px;
-  color: #a1a1aa;
+  color: var(--color-zinc-400);
 }
 .pc-panel-row strong {
-  color: #f4f4f5;
+  color: var(--color-zinc-100);
   font-family: "Barlow Condensed", system-ui, sans-serif;
   font-size: 18px;
   font-weight: 800;
 }
-.pc-ladder {
-  display: flex;
-  gap: 4px;
-  margin-top: 10px;
-}
-.pc-ladder i {
-  flex: 1;
-  height: 8px;
-  border-radius: 2px;
-  background: #27272a;
-}
-.pc-ladder i[data-done="true"] {
-  background: #e30613;
-}
-.pc-tiers {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  font-family: "Barlow Condensed", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #a1a1aa;
-}
-.pc-tiers [aria-current] {
-  color: #ff2d3d;
-}
-
 .pc-breakdown summary {
   cursor: pointer;
   list-style: none;
@@ -325,10 +296,10 @@
 }
 .pc-part-label {
   font-size: 13px;
-  color: #a1a1aa;
+  color: var(--color-zinc-400);
 }
 .pc-part-label b {
-  color: #f4f4f5;
+  color: var(--color-zinc-100);
   font-weight: 600;
 }
 .pc-part-value {
@@ -341,7 +312,7 @@
 .pc-bar {
   height: 6px;
   border-radius: 3px;
-  background: #27272a;
+  background: var(--color-zinc-800);
   overflow: hidden;
 }
 .pc-bar i {
@@ -353,7 +324,7 @@
   margin-top: 12px;
   font-size: 12px;
   line-height: 1.45;
-  color: #a1a1aa;
+  color: var(--color-zinc-400);
 }
 
 @media (prefers-reduced-motion: reduce) {
